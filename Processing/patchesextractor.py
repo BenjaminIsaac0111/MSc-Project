@@ -27,13 +27,9 @@ class PatchExtractor(SVSLoader):
                 png_file_path = self._svs_name[:-4] + '_' + str(i) + '_Class_' + self.patch_classes[i] + '.png'
                 if not dry:
                     img_patch.save(fp=self.CONFIG['PATCHES_DIR'] + png_file_path)
+                break
 
-    def extract_points(self, assoc_file_pattern=None):
-        if assoc_file_pattern:
-            self.load_associated_file(pattern=assoc_file_pattern)
-        else:
-            self.load_associated_file(pattern=self.CONFIG['ASSOCIATED_FILE_PATTERN'])
-
+    def extract_points(self):
         try:
             annotations = bs(''.join(self._loaded_associated_file.readlines()), 'html.parser')
             points = annotations.findAll('region', {'type': '3'})
@@ -50,7 +46,7 @@ class PatchExtractor(SVSLoader):
             self.patch_classes = patch_classes
 
         except AttributeError:
-            pass
+            print('No associated file found.')
 
     def cache_points(self):
         raise NotImplementedError
@@ -63,10 +59,10 @@ class PatchExtractor(SVSLoader):
         plt.imshow(self._loaded_svs.read_region(location=self.patch_coordinates[i],
                                                 level=level,
                                                 size=self.patch_size))
-        plt.title('ID: ' + str(i) + ' Class: ' + str(ground_truth))
+        plt.title('ID: ' + str(i) + ' Class: ' + self.patch_classes[i])
         plt.show()
 
     def loader_message(self):
-        message = '--- Extracting patches from {} on PID {} ---'
+        message = '--- Loaded {} on PID {} ---'
         print(message.format(self._svs_name,
                              os.getpid()))

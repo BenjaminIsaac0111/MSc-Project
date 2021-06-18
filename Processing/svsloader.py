@@ -47,6 +47,8 @@ class SVSLoader:
             self.loader_message()
 
     def load_associated_file(self, pattern=None):
+        if not pattern:
+            pattern = self.CONFIG['ASSOCIATED_FILE_PATTERN']
         compiled = re.compile(pattern=pattern)
         file = [file for file in self.associated_files if compiled.search(file.lower())]
         if len(file) == 1:
