@@ -37,7 +37,7 @@ class SVSLoader:
                                 file=self.CACHE_DIRECTORY + self.DIR_LISTING_FILENAME)
 
     def construct_svs_list(self):
-        self.svs_files = [os.path.split(file)[-1:] for file in self.directory_listing if file.endswith('.svs')]
+        self.svs_files = [os.path.split(file)[-1:][0] for file in self.directory_listing if file.endswith('.svs')]
 
     def load_svs(self, filename=None, silent=False):
         self._loaded_svs = openslide.OpenSlide(filename=self.get_svs(pattern=filename))

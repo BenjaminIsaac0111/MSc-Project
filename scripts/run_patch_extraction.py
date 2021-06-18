@@ -19,7 +19,7 @@ def main(specified_svs_files=None, args=None):
 
     # TODO Extend to extract points from multiple associated files per svs?
     for file in patch_extractor.svs_files:
-        patch_extractor.load_svs(file[0])
+        patch_extractor.load_svs(file)
         patch_extractor.extract_points()
         patch_extractor.extract_patches(dry=args.dry)
         patch_extractor.close_svs()

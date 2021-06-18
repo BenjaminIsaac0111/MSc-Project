@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from Processing import SVSLoader
 
-# import opencv
+import cv2
 from bs4 import BeautifulSoup as bs
 
 
@@ -19,7 +19,7 @@ class PatchExtractor(SVSLoader):
         self.patch_size = (self.CONFIG['PATCH_SIZE']['WIDTH'], self.CONFIG['PATCH_SIZE']['HEIGHT'])
         self.ground_truth_mask = None
 
-    def extract_patches(self, level=None, dry=False):
+    def extract_patches(self, level=0, dry=False):
         if level:
             level = self._loaded_svs.get_best_level_for_downsample(downsample=self.CONFIG['DOWNSAMPLE_FACTOR'])
         for i, loc in enumerate(self.patch_coordinates):
