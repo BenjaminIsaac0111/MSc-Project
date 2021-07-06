@@ -1,6 +1,9 @@
-pyyaml~=5.4.1
+pandas~=1.1.5
 numpy~=1.19.2
-matplotlib~=3.3.2
-tensorflow~=2.3.0
-tensorflow-gpu~=2.3.0
-scipy~=1.6.0
+matplotlib~=3.3.4
+yaml~=0.2.5
+pyyaml~=5.4.1
+bs4~=4.9.3
+beautifulsoup4~=4.9.3
+opencv-python~=4.5.2.54
+pillow~=8.2.0

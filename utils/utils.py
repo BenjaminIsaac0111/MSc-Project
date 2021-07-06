@@ -9,11 +9,11 @@ def open_dir_listings(directory_listings=None):
         return [line.strip() for line in listing]
 
 
-# Write directory listing to disk.
-def write_dir_listing(dir_listings=None, file=None):
-    dir_listings = map(lambda x: x + '\n', dir_listings)
+# Write list to disk.
+def write_list(list_to_write=None, file=None):
+    list_to_write = map(lambda x: x + '\n', list_to_write)
     dir_listing_file = open(file=file, mode='w')
-    dir_listing_file.writelines(dir_listings)
+    dir_listing_file.writelines(list_to_write)
     dir_listing_file.close()
 
 
@@ -51,6 +51,7 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 # svs_listings, unresolved_listings = find_listings(trial_file='data/CR07 TCD.xlsx')
 # write_svs_listings(svs_listings=svs_listings, file='data/svs_listings.txt')

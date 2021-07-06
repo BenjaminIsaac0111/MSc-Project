@@ -41,6 +41,8 @@ class SVSLoader:
 
     def load_svs(self, filename=None, silent=False):
         self._loaded_svs = openslide.OpenSlide(filename=self.get_svs(pattern=filename))
+        if self._loaded_svs is None:
+            raise FileNotFoundError
         self._svs_name = filename
         self.associated_files = self.get_associated_files(pattern=filename[:-4])
         if not silent:
@@ -57,7 +59,7 @@ class SVSLoader:
             print('\tUsing Loaded {}\n'.format(os.path.split(path)[-1]))
             self._loaded_associated_file = file
         else:
-            print('\tNo associated file loaded for {}. '.format(self._svs_name) + '\n\tCheck pattern: {}\n'.format(
+            print('\tNo associated file loaded for {}. '.format(self._svs_name) + 'Check pattern: "{}"'.format(
                 pattern))
 
     def close_svs(self):
