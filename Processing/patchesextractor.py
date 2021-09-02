@@ -1,7 +1,6 @@
 import os
 import matplotlib.pyplot as plt
 
-from utils import utils
 from Processing import SVSLoader
 
 import cv2 as cv
@@ -22,19 +21,22 @@ class PatchExtractor(SVSLoader):
 
     def extract_patches(self, level=0, dry=False):
         if level:
-            level = self._loaded_svs.get_best_level_for_downsample(downsample=self.CONFIG['DOWNSAMPLE_FACTOR'])
+            level = self.loaded_svs.get_best_level_for_downsample(downsample=self.CONFIG['DOWNSAMPLE_FACTOR'])
         for i, loc in enumerate(self.patch_coordinates):
             mask = self.build_mask(truth=int(self.patch_classes[i]))
-            with self._loaded_svs.read_region(location=loc, level=level, size=self.patch_size) as img_patch:
-                png_file_path = self._svs_name[:-4] + '_' + str(i) + '_Class_' + self.patch_classes[i] + '.png'
+            # mask = self.build_mask(truth=255)
+            png_filename = self.svs_name[:-4] + '_' + str(i) + '_Class_' + self.patch_classes[i] + '.png'
+            with self.loaded_svs.read_region(location=loc, level=level, size=self.patch_size) as img_patch:
                 if not dry:
+                    if not os.path.isdir(self.CONFIG['PATCHES_DIR']):
+                        os.makedirs(self.CONFIG['PATCHES_DIR'])
                     img_patch = np.array(img_patch.convert("RGB"))
                     patch = Image.fromarray(cv.hconcat([img_patch, mask]))
-                    patch.save(fp=self.CONFIG['PATCHES_DIR'] + png_file_path)
+                    patch.save(fp=self.CONFIG['PATCHES_DIR'] + png_filename)
 
     def extract_points(self):
         try:
-            annotations = bs(''.join(self._loaded_associated_file.readlines()), 'html.parser')
+            annotations = bs(''.join(self.loaded_associated_file.readlines()), 'html.parser')
             points = annotations.findAll('region', {'type': '3'})
 
             points_coor = []
@@ -62,20 +64,20 @@ class PatchExtractor(SVSLoader):
         return cv.circle(img=mask,
                          center=self.patch_center,
                          radius=self.CONFIG['MASK']['RADIUS'],
-                         color=(0, 0, truth),  # Blue channel used for ground truth.
+                         color=(0, 0, truth+1),  # Blue channel used for ground truth. +1 to avoid void masks.
                          thickness=-1)  # RGB
 
     def cache_points(self):
         raise NotImplementedError
 
     def plot_patch(self, i, level=0):
-        plt.imshow(self._loaded_svs.read_region(location=self.patch_coordinates[i],
-                                                level=level,
-                                                size=self.patch_size))
+        plt.imshow(self.loaded_svs.read_region(location=self.patch_coordinates[i],
+                                               level=level,
+                                               size=self.patch_size))
         plt.title('ID: ' + str(i) + ' Class: ' + self.patch_classes[i])
         plt.show()
 
     def loader_message(self):
         message = '--- Loaded {} on PID {} ---'
-        print(message.format(self._svs_name,
+        print(message.format(self.svs_name,
                              os.getpid()))

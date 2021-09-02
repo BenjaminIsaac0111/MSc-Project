@@ -7,7 +7,6 @@ from Processing import PatchExtractor
 from pathlib import Path
 
 
-# TODO Double check how to choose appropriate image level for downsampling.
 def main(specified_svs_files=None, args=None):
     if args.config:
         patch_extractor = PatchExtractor(config_file=args.config)
@@ -17,7 +16,6 @@ def main(specified_svs_files=None, args=None):
     if specified_svs_files:
         patch_extractor.svs_files = specified_svs_files
 
-    # TODO Extend to extract points from multiple associated files per svs?
     for file in patch_extractor.svs_files:
         patch_extractor.load_svs(file)
         patch_extractor.load_associated_file()
@@ -26,14 +24,19 @@ def main(specified_svs_files=None, args=None):
         patch_extractor.close_svs()
 
 
-def main_pooled(args=None):
+def main_pooled(specified_svs_files=None, args=None):
     extractor = PatchExtractor(config_file=args.config)
-    svs_files = utils.split_list(lst=extractor.svs_files, n=round(len(extractor.svs_files) / args.num_workers))
+    if specified_svs_files:
+        extractor.svs_files = specified_svs_files
+    svs_files = utils.list_to_blocks(lst=extractor.svs_files, n=round(len(extractor.svs_files) / args.num_workers))
     pool = Pool(args.num_workers)
     main_pool = partial(main, args=args)
     pool.map_async(main_pool, list(svs_files))
     pool.close()
     pool.join()
+
+    # training_list = [file for file in os.listdir('data/patches') if file.endswith('.png')]
+    # training_list = [file + '\t' + file[-5] for file in training_list]
 
 
 if __name__ == '__main__':
@@ -45,19 +48,23 @@ if __name__ == '__main__':
                         default='config\\default_configuration.yaml')
 
     parser.add_argument('-a', '--assoc-file-pattern', type=str,
-                        help='Regular Expression to load the annotation file(s)',
+                        help=r'Regular Expression to load the annotation file(s)',
                         default=None)
 
-    parser.add_argument('-p', '--pool', type=utils.str2bool,
-                        help='Run patch extraction on a pool of workers.',
+    parser.add_argument('-s', '--svs-listing', type=str,
+                        help=r'Extract from svs in this svs file listing.',
                         default=False)
 
+    parser.add_argument('-p', '--pool', type=utils.str2bool,
+                        help=r'Run patch extraction on a pool of workers.',
+                        default=True)
+
     parser.add_argument('-n', '--num-workers', type=int,
-                        help='Number of pool workers (Default is OS (n-1) specified)',
-                        default=os.cpu_count()-1)
+                        help=r'Number of pool workers (Default is OS (n-1) specified)',
+                        default=os.cpu_count() - 1)
 
     parser.add_argument('-d', '--dry', type=utils.str2bool,
-                        help='Do a dry run.',
+                        help=r'Do a dry run.',
                         default=False)
 
     arguments = parser.parse_args()
@@ -67,7 +74,7 @@ if __name__ == '__main__':
 
     if arguments.pool:
         print('Running patch extraction on Pool of {} Workers\n'.format(arguments.num_workers))
-        main_pooled(args=arguments)
+        main_pooled(specified_svs_files=open(arguments.svs_listing).read().splitlines(), args=arguments)
     else:
         print('Running patch extraction sequentially\n.')
-        main(args=arguments)
+        main(specified_svs_files=open(arguments.svs_listing).read().splitlines(), args=arguments)
