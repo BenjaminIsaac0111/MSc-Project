@@ -1,30 +1,3 @@
-######################################################################
-#
-# Module: HGDL3.py
-# Application: HGDL3 
-#
-# (c) HeteroGenius Limited 2020
-#
-######################################################################
-#
-# Description:
-#
-# Entry point for HGDL3 deep learning application 
-#
-######################################################################
-#
-# Dependencies:
-#
-# tensorflow
-# tensorflow-addons
-# numpy
-# skimage
-# matplotlib (may be removed)
-#
-######################################################################
-
-
-# Disable verbose output of tensorflow
 import os
 import warnings
 
@@ -208,20 +181,6 @@ if __name__ == '__main__':
 
     test_list = open('models/TestData.txt')
     test_list = [dir_path + image.partition('\t')[0] for image in test_list.readlines()]
-    # test_list = ['100046_239_Class_1.png',
-    #              '100046_23_Class_1.png',
-    #              '100046_240_Class_2.png',
-    #              '100046_241_Class_1.png',
-    #              '100046_242_Class_2.png',
-    #              '100046_243_Class_1.png',
-    #              '100046_244_Class_6.png',
-    #              '100046_245_Class_1.png',
-    #              '100046_246_Class_1.png',
-    #              '100046_247_Class_1.png',
-    #              '100046_248_Class_1.png',
-    #              '100046_249_Class_0.png',
-    #              ]
-    # test_list = [dir_path + image for image in test_list]
 
     list_ds = tf.data.Dataset.from_tensor_slices(test_list)
     list_ds_it = iter(list_ds)
@@ -273,8 +232,6 @@ if __name__ == '__main__':
     print(classification_report(y_true, y_point_pred))
     utils.write_list([str(p) for p in y_point_pred],
                      r'models/Model_2/model_2_round_1_result_' + str(datetime.now()).replace(':', '.') + '.txt')
-
-    #Tumour Cell Density
 
 
     # fig = plt.figure(figsize=(10.14 * 2, 5.12 * 2))
