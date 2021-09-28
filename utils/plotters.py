@@ -19,7 +19,8 @@ def plot_confusion(y_true=None, y_pred=None, title='Confusion Matrix', fmt='d', 
     cm = {'Actual': y_true, 'Predicted': y_pred}
     cm = pd.DataFrame(cm, columns=cm.keys())
     confusion_matrix = pd.crosstab(cm['Actual'], cm['Predicted'], rownames=['Actual'], colnames=['Predicted'])
-    sb.heatmap(confusion_matrix, cmap='Oranges', annot=True, fmt=fmt, robust=True, yticklabels=labels, cbar=False, annot_kws={'size': 14})
+    sb.heatmap(confusion_matrix, cmap='Oranges', annot=True, fmt=fmt, robust=True, yticklabels=labels, cbar=False,
+               annot_kws={'size': 14})
     plt.title(title)
     plt.show()
 
@@ -39,4 +40,18 @@ def bland_altman_plot(data1, data2, *args, **kwargs):
     plt.ylabel('Difference between TCD Truth and TCD Predictions')
     plt.legend()
     plt.title('Bland-Altman Plot of TCD agreement')
+    plt.show()
+
+
+def accuracy_per_image_plot(accuracies=None, xlabel='Accuracy', ylabel='Per Image Count', title=None, bins=20):
+    md = np.mean(accuracies)
+    sd = np.std(accuracies, axis=0)
+    plt.hist(accuracies, bins=20, histtype='stepfilled')
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.axvline(md, color='red', linestyle='--', label='mean')
+    plt.axvline(md + 1.96 * sd, color='gray', linestyle='--', label='SD +1')
+    plt.axvline(md - 1.96 * sd, color='gray', linestyle='--', label='SD -1')
+    plt.legend()
     plt.show()
