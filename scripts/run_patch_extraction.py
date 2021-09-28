@@ -72,9 +72,14 @@ if __name__ == '__main__':
     if arguments.dry:
         print('Doing Dry Run.\n')
 
+    if arguments.svs_listing:
+        svs_listing_file = open(arguments.svs_listing).read().splitlines()
+    else:
+        svs_listing_file = None
+
     if arguments.pool:
         print('Running patch extraction on Pool of {} Workers\n'.format(arguments.num_workers))
-        main_pooled(specified_svs_files=open(arguments.svs_listing).read().splitlines(), args=arguments)
+        main_pooled(specified_svs_files=svs_listing_file, args=arguments)
     else:
-        print('Running patch extraction sequentially\n.')
-        main(specified_svs_files=open(arguments.svs_listing).read().splitlines(), args=arguments)
+        print('Running patch extraction sequentially.\n')
+        main(specified_svs_files=svs_listing_file, args=arguments)
