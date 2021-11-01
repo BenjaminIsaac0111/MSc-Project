@@ -1,11 +1,8 @@
-from collections import Counter
 import pandas as pd
 import numpy as np
 import argparse
 import os
-import random
 from sklearn.utils import class_weight
-from sklearn.metrics import cohen_kappa_score, f1_score, accuracy_score, balanced_accuracy_score, classification_report
 
 
 def list_files(directory=None):
@@ -39,7 +36,8 @@ def write_list(list_to_write=None, file=None):
     dir_listing_file.close()
 
 
-def find_listings(trial_file=None, directory_listing=None):
+# TODO Could move into a processing/triallister.py at some point.
+def find_listings_from_trial(trial_file=None, directory_listing=None):
     """
     This function will look for all the listed data that correspond with a trail excel file. A bit of a domain specific
     function.
@@ -55,9 +53,10 @@ def find_listings(trial_file=None, directory_listing=None):
                       'Trial number'] = '0' + trial_listing.loc[(trial_listing['Trial number'].str.len() < 4),
                                                                 'Trial number']
 
-    trial_listing_locations = 'Y:\\' + trial_listing['Trial number'].astype('str') + \
-                              '\\' + trial_listing['svs'].astype('str') + '.svs'
-
+    trial_listing_locations = 'Y:\\' + trial_listing['Trial number'].astype('str')
+    trial_listing_locations += trial_listing['Trial number'].astype('str')
+    trial_listing_locations += trial_listing['svs'].astype('str')
+    trial_listing_locations += '.svs'
     trial_listing_locations = list(trial_listing_locations)
 
     found_svs_listings = [path for path in trial_listing_locations if path in directory_listing]
@@ -79,8 +78,7 @@ def list_to_blocks(lst, n):
 
 def str2bool(v):
     """
-    A str to bool utility. Can be useful for parsing arguments
-
+    A str to bool utility. Useful for parsing cli arguments.
     :param v: either a string or int that represents a boolean value.
     :return: a True or False python value.
     """
@@ -103,15 +101,6 @@ def get_classes_from_data_dir(directory=None):
     return [[file, str(int(file[-5]) + 1)] for file in os.listdir(directory) if file.endswith('.png')]
 
 
-def train_test_split_sample(split=0.2, directory=None):
-    training_list = [file + '\t' + cla for file, cla in get_classes_from_data_dir(directory)]
-    ids = [image_id[:6] for image_id in training_list]
-    sample_image_ids = random.sample(set(ids), round(len(set(ids)) * split))
-    training_sample = [patch for patch in training_list if patch[:6] in sample_image_ids]
-    testing_sample = [patch for patch in training_list if patch[:6] not in sample_image_ids]
-    return training_sample, testing_sample
-
-
 def get_svs_names(file=None):
     test_list = open(file=file)
     test_list = test_list.readlines()
@@ -121,14 +110,12 @@ def get_svs_names(file=None):
 def build_training_list(directory=None):
     write_list([file + '\t' + cla for file, cla in get_classes_from_data_dir(directory)],
                directory + '\\TrainingData.txt')
-    write_list([file + '\t' + cla for file, cla in get_classes_from_data_dir(directory)],
-               directory + '\\TrainingData.txt.Full')
 
 
 def get_inv_class_proportions(counter=None):
     """
     Gets the inverse proportions of each class.
-    :param counter: a Counter object
+    :param counter a Counter object
     :return: unsorted and sorted dictionary of the calculated inverse proportions.
     """
     sum_of_classes = sum(counter.values())
@@ -139,6 +126,11 @@ def get_inv_class_proportions(counter=None):
 
 
 def class_weights(file=None):
+    """
+    Estimate class weights for unbalanced datasets.
+    :param file file containing a list of class label for each data point in a set.
+    :return class weights.
+    """
     classes = open_dir_listings(file)
     classes = [int(cls[-1]) for cls in classes]
     return class_weight.compute_class_weight('balanced',
@@ -163,25 +155,15 @@ def normalise(arr, t_min, t_max):
     return norm_arr
 
 
-def get_class_weights(directory=None, t_min=1, t_max=2):
-    classes = get_classes_from_data_dir(directory=directory)
-    return normalise(get_inv_class_proportions(Counter([int(cla) for _, cla in classes]))[1].values(),
-                     t_min=t_min,
-                     t_max=t_max)
-
-
 def merge_classes(classes=None, data=None, target=None):
+    """
+    Merges classes in a dataset.
+    :param classes classes to merge.
+    :param data data points to operate on.
+    :param target target class to merge into.
+    :return data with merged classes
+    """
     for i, d in enumerate(data):
         if d in classes:
             data[i] = target
     return data
-
-
-def report_to_latex(file=None):
-    y_pred = [int(cls[-1]) for cls in open_dir_listings(file)]
-    y_true = [int(cls[-1]) for cls in open_dir_listings('models/TestData.txt')]
-    table = pd.DataFrame(classification_report(y_true, y_pred, output_dict=True)).transpose()
-    print(table.to_latex(index=False))
-
-# svs_listings, unresolved_listings = find_listings(trial_file='data/CR07 TCD.xlsx')
-# write_svs_listings(svs_listings=svs_listings, file='data/svs_listings.txt')

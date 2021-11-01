@@ -1,20 +1,15 @@
 import os
-from os.path import exists
 from config import load_config
-from utils import utils
 import re
 
 os.add_dll_directory('C:\\Program Files\\Openslide\\bin')  # Fix for Openslide bin not being found on path
-import openslide
+from openslide import OpenSlide
 
 
 class SVSLoader:
     def __init__(self, config_file='config\\default_configuration.yaml'):
         self.CONFIG = load_config(file=config_file)
-        self.CACHE_DIRECTORY = self.CONFIG['CACHE']
         self.DATA_DIR = self.CONFIG['DATA_DIR']
-        self.DIR_LISTING_FILENAME = 'directory_listing.txt'
-        self.CACHED_LISTINGS = self.CACHE_DIRECTORY + self.DIR_LISTING_FILENAME
         self.svs_files = []
         self.directory_listing = []
         self.associated_files = []
@@ -25,18 +20,15 @@ class SVSLoader:
         self.construct_svs_list()
 
     def construct_dir_listing(self):
-        if not exists(self.CACHED_LISTINGS):
-            for root, dirs, files in os.walk(self.DATA_DIR):
-                for file in files:
-                    self.directory_listing.append(os.path.join(root, file))
-        else:
-            self.directory_listing = utils.open_dir_listings(directory_listings=self.CACHED_LISTINGS)
+        for root, dirs, files in os.walk(self.DATA_DIR):
+            for file in files:
+                self.directory_listing.append(os.path.join(root, file))
 
     def construct_svs_list(self):
         self.svs_files = [os.path.split(file)[-1:][0] for file in self.directory_listing if file.endswith('.svs')]
 
     def load_svs(self, filename=None, silent=False):
-        self.loaded_svs = openslide.OpenSlide(filename=self.get_svs(pattern=filename))
+        self.loaded_svs = OpenSlide(filename=self.get_svs(pattern=filename))
         if self.loaded_svs is None:
             raise FileNotFoundError
         self.svs_name = filename
@@ -48,15 +40,12 @@ class SVSLoader:
         if not pattern:
             pattern = self.CONFIG['ASSOCIATED_FILE_PATTERN']
         compiled = re.compile(pattern=pattern)
-        file = [file for file in self.associated_files if compiled.search(file.lower())]
-        if len(file) == 1:
-            path = file[0]
-            file = open(file=path)
-            print('\tUsing Loaded {}\n'.format(os.path.split(path)[-1]))
-            self.loaded_associated_file = file
-        else:
-            print('\tNo associated file loaded for {}. '.format(self.svs_name) + 'Check pattern: "{}"'.format(
-                pattern))
+
+        for i, file_path in enumerate(self.associated_files):
+            if compiled.search(file_path.split("\\")[-1].lower()):
+                associated_file = self.associated_files[i]
+                self.loaded_associated_file = open(file=associated_file)
+                print('\tUsing Loaded {}\n'.format(os.path.split(associated_file)[-1]))
 
     def close_svs(self):
         self.loaded_svs.close()

@@ -19,8 +19,16 @@ def main(specified_svs_files=None, args=None):
     for file in patch_extractor.svs_files:
         patch_extractor.load_svs(file)
         patch_extractor.load_associated_file()
-        patch_extractor.extract_points()
-        patch_extractor.extract_patches(dry=args.dry)
+
+        try:
+            patch_extractor.extract_points()
+        except AttributeError as e:
+            print('\tNo associated file loaded for {}. '.format(patch_extractor.svs_name))
+            print('\tCheck RegEx pattern or Missing File?\n'.format())
+            patch_extractor.close_svs()
+            continue
+
+        patch_extractor.extract_patches()
         patch_extractor.close_svs()
 
 
@@ -34,9 +42,6 @@ def main_pooled(specified_svs_files=None, args=None):
     pool.map_async(main_pool, list(svs_files))
     pool.close()
     pool.join()
-
-    # training_list = [file for file in os.listdir('data/patches') if file.endswith('.png')]
-    # training_list = [file + '\t' + file[-5] for file in training_list]
 
 
 if __name__ == '__main__':
@@ -61,11 +66,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-n', '--num-workers', type=int,
                         help=r'Number of pool workers (Default is OS (n-1) specified)',
-                        default=os.cpu_count() - 1)
+                        default=int(os.cpu_count() / 2) - 1)
 
-    parser.add_argument('-d', '--dry', type=utils.str2bool,
-                        help=r'Do a dry run.',
-                        default=False)
 
     arguments = parser.parse_args()
 

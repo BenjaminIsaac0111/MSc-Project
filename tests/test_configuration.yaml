@@ -1,0 +1,16 @@
+# Format with backslash in paths.
+DATA_DIR: 'tests\testdata\'
+TRAINING_DATA: 'models\TrainingData.txt'
+TEST_DATA: 'models\TestData.txt'
+PATCHES_DIR: 'tests\data\'
+
+# Patch extraction configuration.
+# r'w.*scores.xml' sample regex for WHOLE_scores.xml associated files.
+ASSOCIATED_FILE_PATTERN: 'w.*scores.xml'
+DOWNSAMPLE_FACTOR: 2
+PATCH_SIZE:
+  WIDTH: 512
+  HEIGHT: 1024
+MASK:
+  RADIUS: 32
+EXPAND_OUT_FACTOR: 2
