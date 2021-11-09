@@ -2,8 +2,8 @@ import os
 from multiprocessing import Pool
 import argparse
 from functools import partial
-from utils import utils
-from Processing import PatchExtractor
+from src.utils import utils
+from src.Processing import PatchExtractor
 from pathlib import Path
 
 
@@ -17,19 +17,18 @@ def main(specified_svs_files=None, args=None):
         patch_extractor.svs_files = specified_svs_files
 
     for file in patch_extractor.svs_files:
-        patch_extractor.load_svs(file)
+        patch_extractor.load_svs_by_id(file)
         patch_extractor.load_associated_file()
-
         try:
             patch_extractor.extract_points()
+            patch_extractor.extract_patches()
         except AttributeError as e:
-            print('\tNo associated file loaded for {}. '.format(patch_extractor.svs_name))
+            print('\tNo associated file loaded for {}. '.format(patch_extractor.svs_id))
             print('\tCheck RegEx pattern or Missing File?\n'.format())
-            patch_extractor.close_svs()
             continue
-
-        patch_extractor.extract_patches()
-        patch_extractor.close_svs()
+        finally:
+            patch_extractor.close_svs()
+    print('Done!')
 
 
 def main_pooled(specified_svs_files=None, args=None):
@@ -68,11 +67,7 @@ if __name__ == '__main__':
                         help=r'Number of pool workers (Default is OS (n-1) specified)',
                         default=int(os.cpu_count() / 2) - 1)
 
-
     arguments = parser.parse_args()
-
-    if arguments.dry:
-        print('Doing Dry Run.\n')
 
     if arguments.svs_listing:
         svs_listing_file = open(arguments.svs_listing).read().splitlines()

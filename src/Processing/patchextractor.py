@@ -1,9 +1,10 @@
 import os
-from Processing import SVSLoader
+from src.Processing import SVSLoader
 import cv2 as cv
 from PIL import Image
 from bs4 import BeautifulSoup as soup
 import numpy as np
+from pathlib import Path
 
 
 class PatchExtractor(SVSLoader):
@@ -17,6 +18,13 @@ class PatchExtractor(SVSLoader):
                            self.CONFIG['PATCH_SIZE']['HEIGHT'] * self.expand_factor)
         self.patch_center = self.get_patch_center()
 
+    def _loader_message(self):
+        message = '--- Loaded {} on PID {} ---'
+        print(message.format(self.svs_id, os.getpid()))
+
+    def set_svs_institute(self):
+        self.institute_id = Path(self.find_svs_path_by_id(pattern=self.svs_id)).parts[-2]
+
     def get_patch_center(self):
         patch_center_x, patch_center_y = self.patch_size
         return int(round(patch_center_x / 2)), int(round(patch_center_y / 2))
@@ -26,12 +34,18 @@ class PatchExtractor(SVSLoader):
 
     def extract_patches(self, level=0, visualise_mask=False):
         for i, loc in enumerate(self.patch_coordinates):
+
             if visualise_mask:
-                mask = self.build_mask(truth=int(self.patch_classes[i])) * 255
+                mask = self.build_mask(truth=255)
             else:
                 mask = self.build_mask(truth=int(self.patch_classes[i]))
 
-            png_filename = self.svs_name[:-4] + '_' + str(i) + '_Class_' + self.patch_classes[i] + '.png'
+            if self.institute_id:
+                png_filename = self.institute_id[:2] + '_' + self.institute_id[-2:] + '_' + self.svs_id[:-4]
+            else:
+                png_filename = self.svs_id[:-4]
+
+            png_filename += '_' + str(i) + '_Class_' + self.patch_classes[i] + '.png'
 
             with self.loaded_svs.read_region(location=loc, level=level, size=self.patch_size) as img_patch:
                 if not os.path.isdir(self.CONFIG['PATCHES_DIR']):
@@ -70,8 +84,4 @@ class PatchExtractor(SVSLoader):
                          center=circle_center_coor,
                          radius=self.CONFIG['MASK']['RADIUS'],
                          color=(0, 0, truth + 1),  # Blue channel used for ground truth. +1 to avoid void masks.
-                         thickness=-1)  # RGB
-
-    def loader_message(self):
-        message = '--- Loaded {} on PID {} ---'
-        print(message.format(self.svs_name, os.getpid()))
+                         thickness=-1)
