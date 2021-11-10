@@ -35,7 +35,8 @@ def main_pooled(specified_svs_files=None, args=None):
     extractor = PatchExtractor(config_file=args.config)
     if specified_svs_files:
         extractor.svs_files = specified_svs_files
-    svs_files = utils.list_to_blocks(lst=extractor.svs_files, n=round(len(extractor.svs_files) / args.num_workers))
+    svs_files = utils.list_to_blocks(lst=extractor.svs_files,
+                                     n_blocks=round(len(extractor.svs_files) / args.num_workers))
     pool = Pool(args.num_workers)
     main_pool = partial(main, args=args)
     pool.map_async(main_pool, list(svs_files))
