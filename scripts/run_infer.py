@@ -23,10 +23,8 @@ print(device_lib.list_local_devices())
 import logging
 from datetime import datetime
 
-import pandas as pd
 from sklearn.metrics import cohen_kappa_score, accuracy_score, balanced_accuracy_score, classification_report
-from utils import utils
-from utils import plotters
+from src.utils import utils, plotters
 from config import config
 
 CONFIG = config.load_config('config/r32px.yaml')
