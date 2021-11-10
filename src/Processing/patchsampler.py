@@ -66,8 +66,3 @@ def train_test_split_by_meta_id(directory=None, split=0.7, id_level=0, seed=7):
     if any(item for item in training_sample if item in testing_sample):
         print('Overlapping sets!')
     return training_sample, testing_sample
-
-
-# build_train_test_lists(destination_dir=r'E:\32pxToyData', n_splits=5)
-# train_test_split_by_meta_id(directory=r'E:\Complete_Working_Data\CR07\HGDL_Model_Patch_Data\32px', split=0.7)
-# class_weights_from_directory()
