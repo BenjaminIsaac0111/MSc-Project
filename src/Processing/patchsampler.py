@@ -1,13 +1,19 @@
 import os
-
+import re
 import numpy as np
 from sklearn.utils import class_weight
-
-from src import utils
 import random
 from sklearn.model_selection import KFold
 
 
+def get_patch_meta_data_from_dir(directory=None):
+    """
+    [<filename>[0], [<institute_id>[0]_<patient_id>[1]_<svs_id>[2]_<patch_no>[3]_<class>[4].png[5]]]
+    """
+    return [[file, re.split('[_.]', file)] for file in os.listdir(directory) if file.endswith('.png')]
+
+
+# TODO: Kinda redundant but need to modify its dependencies to work with newer train_test_split_by_meta_id().
 def get_classes_from_data_dir(directory=None):
     """
     This will fetch a list of the classes from extracted patches in a specified directory.
@@ -15,22 +21,6 @@ def get_classes_from_data_dir(directory=None):
     :return: a list of the class for each patch.
     """
     return [[file, str(int(file[-5]) + 1)] for file in os.listdir(directory) if file.endswith('.png')]
-
-
-def train_test_split_sample(split=0.5, directory=None):
-    """
-    Build the train test split by reading the svs ids in a given directory containing extracted patches.
-    Needs the patch filenames in a directory to follow the <id>_<patch_no>_<class>.png format. (May change)
-    :param split percentage
-    :param directory: directory containing the split
-    :return training sample list of svs images ids and test sample list of svs image ids
-    """
-    training_list = [file + '\t' + cla for file, cla in get_classes_from_data_dir(directory)]
-    ids = [image_id[:6] for image_id in training_list]
-    sample_image_ids = random.sample(set(ids), round(len(set(ids)) * split))
-    training_sample = [patch for patch in training_list if patch[:6] in sample_image_ids]
-    testing_sample = [patch for patch in training_list if patch[:6] not in sample_image_ids]
-    return training_sample, testing_sample
 
 
 def k_fold_cross_validation_from_directory(n_splits=5, directory=None, random_state=None):
@@ -43,18 +33,7 @@ def k_fold_cross_validation_from_directory(n_splits=5, directory=None, random_st
         return svs_ids, np.array(files)
 
 
-def build_train_test_lists(destination_dir=None, n_splits=5):
-    data_fold_indices, files = k_fold_cross_validation_from_directory(n_splits=n_splits, directory=destination_dir)
-    i = 0
-    for x_training_set, y_test_set in data_fold_indices:
-        training_patches_by_svs_id = [file for file in files if file.split('_')[0] in x_training_set]
-        test_patches_by_svs_id = [file for file in files if file.split('_')[0] in y_test_set]
-        utils.write_list(training_patches_by_svs_id, destination_dir + '\\fold_' + str(i) + '_TrainingData.txt')
-        utils.write_list(test_patches_by_svs_id[y_test_set], destination_dir + '\\fold_' + str(i) + '_TestData.txt')
-        i += 1
-
-
-def class_weights(directory=None):
+def class_weights_from_directory(directory=None):
     """
     Estimate class weights for unbalanced datasets.
     :param directory directory containing patches with class in filenames.
@@ -67,4 +46,28 @@ def class_weights(directory=None):
                                              classes)
 
 
+def train_test_split_by_meta_id(directory=None, split=0.7, id_level=0, seed=7):
+    """
+    Build the train test split by reading the ids in a given directory containing extracted patches. Needs
+    the patch filenames in a directory to follow the following list data structure;
+    [[0]<filename>,[1][[0]<institute_id>_(if available...)[1]<patient_id>_[2]<svs_id>_[3]<patch_no>_[4]<class>[5].png]]
+    :param seed: set the random seed.
+    :param id_level: what id level in the filename to split the data by.
+    :param split: to what ratio of split should be made.
+    :param directory: directory of patch images where the patches follow the aforementioned filename convention.
+    :return list of training patches and list of test patches via id level.
+    """
+    random.seed(seed)
+    patch_list = [meta for meta in get_patch_meta_data_from_dir(directory)]
+    ids = [patch[1][id_level] for patch in patch_list]
+    sample_image_ids = random.sample(set(ids), round(len(set(ids)) * split))
+    training_sample = [patch[0] + '\t' + patch[1][-2] for patch in patch_list if patch[1][id_level] in sample_image_ids]
+    testing_sample = [patch[0] + '\t' + patch[1][-2] for patch in patch_list if patch[1][id_level] not in sample_image_ids]
+    if any(item for item in training_sample if item in testing_sample):
+        print('Overlapping sets!')
+    return training_sample, testing_sample
+
+
 # build_train_test_lists(destination_dir=r'E:\32pxToyData', n_splits=5)
+# train_test_split_by_meta_id(directory=r'E:\Complete_Working_Data\CR07\HGDL_Model_Patch_Data\32px', split=0.7)
+# class_weights_from_directory()
