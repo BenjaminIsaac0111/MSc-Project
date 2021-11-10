@@ -3,15 +3,6 @@ import argparse
 import os
 
 
-def list_dir_files(directory=None):
-    """
-    Lists files in a directory.
-    :param directory: the directory to list.
-    :return: a list of items in the directory.
-    """
-    return os.listdir(directory)
-
-
 def open_dir_listings(directory_listings=None):
     """
     Open a directory listing.
@@ -34,15 +25,14 @@ def write_list(list_to_write=None, file_to_write=None):
     dir_listing_file.close()
 
 
-# TODO Could move into a processing/triallister.py at some point.
-def list_to_blocks(list_to_split, n_blocks):
+def list_to_blocks(lst=None, n_blocks=1):
     """
     Split a list into blocks. Can be useful for pooling data for tasks.
-    :param list_to_split: the list split into blocks.
+    :param lst: the list split into blocks.
     :param n_blocks: number of blocks to split into.
     :return: the list of built blocks.
     """
-    return [list_to_split[i:i + n_blocks] for i in range(0, len(list_to_split), n_blocks)]
+    return [lst[i:i + n_blocks] for i in range(0, len(lst), n_blocks)]
 
 
 def str2bool(v):
@@ -98,6 +88,7 @@ def merge_classes(classes=None, data=None, target=None):
     return data
 
 
+# TODO Could move into a processing/triallister.py at some point.
 def find_listings_from_trial(trial_file=None, directory_listing=None):
     """
     This function will look for all the listed data that correspond with a trail excel file. A bit of a domain specific
