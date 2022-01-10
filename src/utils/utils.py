@@ -1,6 +1,8 @@
-import pandas as pd
 import argparse
 import os
+import re
+
+import pandas as pd
 
 
 def open_dir_listings(directory_listings=None):
@@ -116,3 +118,28 @@ def find_listings_from_trial(trial_file=None, directory_listing=None):
     print('{} svs images found \n'.format(len(found_svs_listings)) +
           '{} unresolved svs images:'.format(len(unresolved)))
     return found_svs_listings, unresolved
+
+
+def get_patch_meta_data_from_dir(directory=None):
+    """
+    [<filename>[0], [<institute_id>[0]_<patient_id>[1]_<svs_id>[2]_<patch_no>[3]_<class>[4].png[5]]]
+    """
+    return [[file, re.split('[_.]', file)] for file in os.listdir(directory) if file.endswith('.png')]
+
+
+def get_patch_meta_data_from_txt(txt_file=None):
+    """
+    [<filename>[0], [<institute_id>[0]_<patient_id>[1]_<svs_id>[2]_<patch_no>[3]_<class>[4].png[5]]]
+    """
+    file_list = [file[:-2] for file in open_dir_listings(txt_file)]
+    return [[file, re.split('[_.]', file)] for file in file_list if file.endswith('.png')]
+
+
+# TODO: Kinda redundant but need to modify its dependencies to work with newer train_test_split_by_meta_id().
+def get_classes_from_data_dir(directory=None):
+    """
+    This will fetch a list of the classes from extracted patches in a specified directory.
+    :param directory: The directory containing the extracted patches.
+    :return: a list of the class for each patch.
+    """
+    return [[file, str(int(file[-5]) + 1)] for file in os.listdir(directory) if file.endswith('.png')]
