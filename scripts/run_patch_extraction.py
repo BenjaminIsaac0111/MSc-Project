@@ -1,10 +1,10 @@
-import os
-from multiprocessing import Pool
 import argparse
+import os
 from functools import partial
-from src.utils import utils
-from src.Processing import PatchExtractor
+from multiprocessing import Pool
 from pathlib import Path
+from src.Processing import PatchExtractor
+from src.utils import utils
 
 
 def main(specified_svs_files=None, args=None):
