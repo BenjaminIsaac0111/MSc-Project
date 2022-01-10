@@ -1,10 +1,10 @@
 import os
-from src.Processing import SVSLoader
+from pathlib import Path
 import cv2 as cv
+import numpy as np
 from PIL import Image
 from bs4 import BeautifulSoup as soup
-import numpy as np
-from pathlib import Path
+from src.Loaders import SVSLoader
 
 
 class PatchExtractor(SVSLoader):
@@ -57,17 +57,16 @@ class PatchExtractor(SVSLoader):
 
                 patch.save(fp=self.CONFIG['PATCHES_DIR'] + png_filename)
 
+    # TODO Validation of classes via some constraining list. Possibly push down to child.
     def extract_points(self):
         annotations = soup(''.join(self.loaded_associated_file.readlines()), 'html.parser')
         points = annotations.findAll('region', {'type': '3'})
-
         points_coor = []
         patch_classes = []
         for i, point in enumerate(points):
-            points_coor.append((round(float(point.find('vertices').contents[0]['x'])),
-                                round(float(point.find('vertices').contents[0]['y'])))
-                               )
             patch_classes.append(point['text'])  # NOTE: Might be some other tag for newer files.
+            points_coor.append((round(float(point.find('vertices').contents[0]['x'])),
+                                round(float(point.find('vertices').contents[0]['y']))))
 
         self.points_coordinates = points_coor
         self.patch_classes = patch_classes
