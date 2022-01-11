@@ -13,17 +13,4 @@ def load_config(file=None):
                 print(exc)
     except FileNotFoundError:
         print('Defaulting...')
-        return {'DATA_DIR': 'data\\',
-                'TRAINING_DATA': 'models\\TrainingData.txt',
-                'TEST_DATA': 'models\\TestData.txt',
-                'PATCHES_DIR': 'data\\',
-                'ASSOCIATED_FILE_PATTERN': 'w.*scores.xml',
-                'DOWNSAMPLE_FACTOR': 2,
-                'PATCH_SIZE':
-                    {'WIDTH': 512,
-                     'HEIGHT': 1024},
-                'EXPAND_OUT_FACTOR': 2
-                }
-
-
-CONFIG = load_config(file='config\\default_configuration.yaml')
+        return yaml.safe_load(r'config/default_configuration.yaml')
