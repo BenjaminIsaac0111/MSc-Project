@@ -4,7 +4,7 @@ import cv2 as cv
 import numpy as np
 from PIL import Image
 from bs4 import BeautifulSoup as soup
-from src.Loaders import SVSLoader
+from SVSLoader.Loaders import SVSLoader
 
 
 class PatchExtractor(SVSLoader):

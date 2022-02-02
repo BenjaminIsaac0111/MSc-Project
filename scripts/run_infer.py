@@ -3,13 +3,8 @@ import warnings
 
 import pandas as pd
 
-from src.InferenceUtils.tf_customs import Linear
-from src.Loaders.patchloader import process_path_value_per_class, prepare_dataset
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
-os.environ['AUTOGRAPH_VERBOSITY'] = '0'
-# warnings.filterwarnings('ignore', category=UserWarning, module='skimage')
-# warnings.filterwarnings('ignore')
+from SVSLoader.InferenceUtils.tf_customs import Linear
+from SVSLoader.Loaders.patchloader import process_path_value_per_class, prepare_dataset
 
 import numpy as np
 from tensorflow.keras.models import load_model
@@ -19,8 +14,9 @@ import tensorflow.keras.losses
 import logging
 from datetime import datetime
 from sklearn.metrics import cohen_kappa_score, accuracy_score, balanced_accuracy_score
-from config import config
 
+warnings.filterwarnings('ignore', category=UserWarning, module='skimage')
+warnings.filterwarnings('ignore')
 tf.autograph.set_verbosity(1)
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
@@ -32,11 +28,13 @@ IMG_HEIGHT = 1024
 IMG_CHANNELS = 3
 BATCH_SIZE = 8
 OUT_CHANNELS = 9
-MODEL_PATH = r'E:\JNET_Results_1\Collated_16px\J_MODEL_16px.output.h5'
 DEVICE = '/GPU:0'
+MODEL_DIR = r'E:\\JNET_Results_3\\'
 PATCHES_DIR = r'E:\Complete_Working_Data\CR07\HGDL_Model_Patch_Data\JNET_EXPERIMENTS\32px\\'
 patch_test_list = open(r'E:\Complete_Working_Data\CR07\HGDL_Model_Patch_Data\JNET_EXPERIMENTS\TestData.txt')
-patch_test_list = [PATCHES_DIR + patch.partition('\t')[0] for patch in patch_test_list.readlines()][:8]
+
+patch_test_list = [PATCHES_DIR + patch.partition('\t')[0] for patch in patch_test_list.readlines()]
+models = [MODEL_DIR + model for model in os.listdir(MODEL_DIR) if model.endswith('.h5')]
 
 
 def load_h5_model(model_path=None):
@@ -97,11 +95,12 @@ def run_infer(test_list=None, model=None):
                 'Image_id',
                 'Patch_no']] = results_df['Patch'].str.split('_', expand=True).drop(columns=[4, 5])
     results_df['Patient_id'] = results_df['Institute_id'] + results_df['Patient_no']
-    return results_df
+    return results_df.set_index('Patient_id')
 
 
 with tf.device(DEVICE):
-    h5 = load_h5_model(MODEL_PATH)
-    results = run_infer(test_list=patch_test_list, model=h5)
-    result_file = MODEL_PATH + '_' + str(datetime.now()).replace(':', '.') + '.csv'
-    results.to_csv(path_or_buf=result_file, encoding='utf-8')
+    for model in models:
+        h5 = load_h5_model(model)
+        results = run_infer(test_list=patch_test_list, model=h5)
+        result_file = model + '_results_' + str(datetime.now()).replace(':', '_') + '.csv'
+        results.to_csv(path_or_buf=result_file, encoding='utf-8')

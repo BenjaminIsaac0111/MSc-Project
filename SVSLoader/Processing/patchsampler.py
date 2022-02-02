@@ -2,11 +2,11 @@ import random
 import numpy as np
 from sklearn.model_selection import KFold
 from sklearn.utils import class_weight
-from src import utils
+from SVSLoader import Utils
 
 
 def k_fold_cross_validation_from_directory(n_splits=5, directory=None, random_state=None):
-    files = [file + '\t' + cla for file, cla in utils.get_classes_from_data_dir(directory)]
+    files = [file + '\t' + cla for file, cla in Utils.get_classes_from_data_dir(directory)]
     svs_ids = set([svs_id.split('_')[0] for svs_id in files])
     if n_splits > 1:
         kf = KFold(n_splits=n_splits, random_state=random_state)
@@ -21,7 +21,7 @@ def class_weights_from_directory(directory=None):
     :param directory directory containing patches with class in filenames.
     :return class weights.
     """
-    classes = utils.get_classes_from_data_dir(directory)
+    classes = Utils.get_classes_from_data_dir(directory)
     classes = [cls for _, cls in classes]
     return class_weight.compute_class_weight('balanced',
                                              np.unique(classes),
@@ -40,7 +40,7 @@ def train_test_split_by_meta_id(directory=None, split=0.7, id_level=0, seed=7):
     :return list of training patches and list of test patches via id level.
     """
     random.seed(seed)
-    patch_list = [meta for meta in utils.get_patch_meta_data_from_dir(directory)]
+    patch_list = [meta for meta in Utils.get_patch_meta_data_from_dir(directory)]
     ids = [patch[1][id_level] for patch in patch_list]
     sample_image_ids = random.sample(set(ids), round(len(set(ids)) * split))
     training_sample = [patch[0] + '\t' + patch[1][-2] for patch in patch_list if patch[1][id_level] in sample_image_ids]

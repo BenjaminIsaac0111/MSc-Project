@@ -1,5 +1,5 @@
 import pytest
-from src.Processing import PatchExtractor
+from SVSLoader.Processing import PatchExtractor
 
 
 @pytest.fixture

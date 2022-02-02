@@ -3,8 +3,8 @@ import os
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
-from src.Processing import PatchExtractor
-from src.utils import utils
+from SVSLoader.Processing import PatchExtractor
+from SVSLoader.Utils import utils
 
 
 def main(specified_svs_files=None, args=None):
