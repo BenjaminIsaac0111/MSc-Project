@@ -143,3 +143,16 @@ def get_classes_from_data_dir(directory=None):
     :return: a list of the class for each patch.
     """
     return [[file, str(int(file[-5]) + 1)] for file in os.listdir(directory) if file.endswith('.png')]
+
+
+def get_embedding_centers(y):
+    return y[:, round(y.shape[1] / 2), round(y.shape[2] / 2), :]
+
+
+def arrays_equal(a, b):
+    if a.shape != b.shape:
+        return False
+    for ai, bi in zip(a.flat, b.flat):
+        if ai != bi:
+            return False
+    return True
