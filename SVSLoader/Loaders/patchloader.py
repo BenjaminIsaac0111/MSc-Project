@@ -1,10 +1,13 @@
 import tensorflow as tf
 
-AUTOTUNE = tf.data.experimental.AUTOTUNE
+try:
+    AUTOTUNE = tf.data.AUTOTUNE
+except AttributeError as e:
+    AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 
 def process_path_value_per_class(file_path, no_channels):
-    xLeft, xRight = read_patch(file_path)
+    xLeft, xRight = load_patch(file_path)
     c = 1
     output_list = []
     while c <= no_channels:
@@ -16,7 +19,7 @@ def process_path_value_per_class(file_path, no_channels):
     return xLeft, channels
 
 
-def read_patch(file_path):
+def load_patch(file_path):
     img = tf.io.read_file(file_path)
     # NOTE: TF 2.3 docs say is loaded as unit8 - TF 2.2 seem to load a s afloat (check this if upgrading!)
     x = decode_img(img)
@@ -36,9 +39,9 @@ def decode_img(img):
     return tf.image.resize(img, [1024, 1024])
 
 
-def prepare_dataset(ds, batch_size=16, cache=True, shuffle=False, shuffle_buffer_size=1000,
+def prepare_dataset(ds, batch_size=16, cache='cache', shuffle=False, shuffle_buffer_size=1000,
                     prefetch_buffer_size=AUTOTUNE):
-    # This is a small dataset, only load it once, and keep it in memory.
+    # If this is a small dataset, only load it once, and keep it in memory.
     # use `.cache(filename)` to cache preprocessing work for datasets that don't
     # fit in memory.
     if cache:
