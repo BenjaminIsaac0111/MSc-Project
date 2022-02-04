@@ -39,8 +39,8 @@ def decode_img(img):
     return tf.image.resize(img, [1024, 1024])
 
 
-def prepare_dataset(ds, batch_size=16, cache='cache', shuffle=False, shuffle_buffer_size=1000,
-                    prefetch_buffer_size=AUTOTUNE):
+def prepare_dataset(ds, batch_size=16, cache=True, shuffle=False, shuffle_buffer_size=1000,
+                    prefetch_buffer_size=AUTOTUNE, repeat=None):
     # If this is a small dataset, only load it once, and keep it in memory.
     # use `.cache(filename)` to cache preprocessing work for datasets that don't
     # fit in memory.
@@ -53,7 +53,7 @@ def prepare_dataset(ds, batch_size=16, cache='cache', shuffle=False, shuffle_buf
     if shuffle:
         ds = ds.shuffle(buffer_size=shuffle_buffer_size)
     # Repeat forever
-    ds = ds.repeat()
+    ds = ds.repeat(repeat)
     ds = ds.batch(batch_size)
     # `prefetch` lets the dataset fetch batches in the background while the model
     # is training.
