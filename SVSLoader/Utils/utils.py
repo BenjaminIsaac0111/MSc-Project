@@ -1,8 +1,9 @@
 import argparse
 import os
 import re
-
+import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 
 
 def open_dir_listings(directory_listings=None):
@@ -29,7 +30,7 @@ def write_list(list_to_write=None, file_to_write=None):
 
 def list_to_blocks(lst=None, n_blocks=1):
     """
-    Split a list into blocks. Can be useful for pooling data for tasks.
+    Pure python function to split a list into blocks. Can be useful for pooling data for tasks.
     :param lst: the list split into blocks.
     :param n_blocks: number of blocks to split into.
     :return: the list of built blocks.
@@ -156,3 +157,23 @@ def arrays_equal(a, b):
         if ai != bi:
             return False
     return True
+
+
+def create_circular_mask(h, w, center=None, radius=None):
+    if center is None:  # use the middle of the image
+        center = (int(w / 2), int(h / 2))
+    if radius is None:  # use the smallest distance between the center and image walls
+        radius = min(center[0], center[1], w - center[0], h - center[1])
+    Y, X = np.ogrid[:h, :w]
+    dist_from_center = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2)
+    mask = dist_from_center <= radius
+    return mask
+
+
+def seglabel2colourmap(seg_labels=None, cmap=plt.cm.tab10.colors):
+    h, w = seg_labels.shape
+    img_rgb = np.zeros((h, w, 3))
+    lut = {label: list(rgb_colour) for label, rgb_colour in enumerate(cmap)}
+    for label, rgb_colour in lut.items():
+        img_rgb[seg_labels == label] = rgb_colour
+    return img_rgb
