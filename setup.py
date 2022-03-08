@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='SVSLoader',
     version='0.0.1',
-    packages=['tests', 'config', 'scripts', 'SVSLoader', 'SVSLoader.Utils', 'SVSLoader.Loaders', 'SVSLoader.Processing',
+    packages=['SVSLoader.Tests', 'SVSLoader.Config', 'SVSLoader.Utils', 'SVSLoader.Loaders', 'SVSLoader.Processing',
               'SVSLoader.InferenceUtils'],
     url='',
     license='',

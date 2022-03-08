@@ -1,5 +1,4 @@
 from pathlib import Path
-
 import yaml
 
 
@@ -12,5 +11,4 @@ def load_config(file=None):
             except yaml.YAMLError as exc:
                 print(exc)
     except FileNotFoundError:
-        print('Defaulting...')
-        return yaml.safe_load(r'config/default_configuration.yaml')
+        print('Config file {} was not found.'.format(file))

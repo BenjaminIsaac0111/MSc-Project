@@ -1,10 +1,13 @@
 import os
 import re
-from config import load_config
+from SVSLoader.Config import load_config
 
 # TODO this needs tidying. Will find required dlls and add them to the project.
-os.add_dll_directory('C:\\Program Files\\Openslide\\bin')  # Fix for Openslide bin not being found on path
-from openslide import OpenSlide
+try:
+    os.add_dll_directory('C:\\Program Files\\Openslide\\bin') # Fix for Openslide bin not being found on path
+    from openslide import OpenSlide
+except AttributeError:
+    print('Warning: Openslide DDL fix did not complete.')
 
 
 class SVSLoader:

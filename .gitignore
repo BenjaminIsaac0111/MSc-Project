@@ -1,4 +1,9 @@
 /data/
 /resources/
-/utils/infer_python.py
 /cache/
+/.idea
+/.pytest_cache/
+/.gitignore
+/SVSLoader/Tests/data/
+/SVSLoader/Tests/testdata/
+/SVSLoader/Tests/.pytest_cache/
