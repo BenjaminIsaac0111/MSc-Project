@@ -4,7 +4,7 @@ from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 from SVSLoader.Processing import PatchExtractor
-from SVSLoader.Utils import utils
+from SVSLoader.Utils.utils import list_to_blocks, str2bool
 
 
 def main(specified_svs_files=None, args=None):
@@ -35,7 +35,7 @@ def main_pooled(specified_svs_files=None, args=None):
     extractor = PatchExtractor(config_file=args.config)
     if specified_svs_files:
         extractor.svs_files = specified_svs_files
-    svs_files = utils.list_to_blocks(lst=extractor.svs_files,
+    svs_files = list_to_blocks(lst=extractor.svs_files,
                                      n_blocks=round(len(extractor.svs_files) / args.num_workers))
     pool = Pool(args.num_workers)
     main_pool = partial(main, args=args)
@@ -60,7 +60,7 @@ if __name__ == '__main__':
                         help=r'Extract from svs in this svs file listing.',
                         default=False)
 
-    parser.add_argument('-p', '--pool', type=utils.str2bool,
+    parser.add_argument('-p', '--pool', type=str2bool,
                         help=r'Run patch extraction on a pool of workers.',
                         default=True)
 
