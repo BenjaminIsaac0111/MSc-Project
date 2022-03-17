@@ -136,16 +136,6 @@ def get_patch_meta_data_from_txt(txt_file=None):
     return [[file, re.split('[_.]', file)] for file in file_list if file.endswith('.png')]
 
 
-# TODO: Kinda redundant but need to modify its dependencies to work with newer train_test_split_by_meta_id().
-def get_classes_from_data_dir(directory=None):
-    """
-    This will fetch a list of the classes from extracted patches in a specified directory.
-    :param directory: The directory containing the extracted patches.
-    :return: a list of the class for each patch.
-    """
-    return [[file, str(int(file[-5]) + 1)] for file in os.listdir(directory) if file.endswith('.png')]
-
-
 def get_embedding_centers(y):
     return y[:, round(y.shape[1] / 2), round(y.shape[2] / 2), :]
 
@@ -177,3 +167,7 @@ def seglabel2colourmap(seg_labels=None, cmap=plt.cm.tab10.colors):
     for label, rgb_colour in lut.items():
         img_rgb[seg_labels == label] = rgb_colour
     return img_rgb
+
+
+def split_segmentation_classes(seg_maps=None, y_targets=None):
+    return np.array([seg_maps[i] == y_targets[i] for i in range(len(seg_maps))])
