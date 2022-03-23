@@ -1,12 +1,18 @@
 import h5py
 from functools import lru_cache
 import numpy as np
+from matplotlib import pyplot as plt
+
 from SVSLoader.Config import load_config
+from SVSLoader.Utils.utils import seglabel2colourmap
 
 
 class ResultLoader:
-    def __init__(self, config_path=None):
-        self.CONFIG = load_config(config_path)
+    def __init__(self, config=None):
+        if type(config) == str:
+            self.CONFIG = load_config(config)
+        elif type(config) == dict:
+            self.CONFIG = config
         self.f = h5py.File(self.CONFIG['RESULTS_DATABASE'], 'r')
         self.H5_OUTDIR = self.CONFIG['RESULTS_H5_DIR'] + self.CONFIG['MODEL_NAME'] + '/'
         self.CLASSES = self.CONFIG['CLASS_COMPONENTS']
@@ -19,6 +25,9 @@ class ResultLoader:
         self.CENTROIDS_TRUTH = self.EMBEDDINGS.attrs['Centroids_True_Class']
         self.CENTROIDS_EMBEDDINGS = np.squeeze(self.EMBEDDINGS[self.EMBEDDINGS.attrs['Centroids']])
         self.samples_idx = None
+        self.random_seed = self.CONFIG['RANDOM_SEED']
+        if self.random_seed:
+            np.random.seed(seed=self.random_seed)
         self.generate_sample()
 
     def generate_sample(self, random_sample_size=None):
@@ -29,7 +38,7 @@ class ResultLoader:
             self.samples_idx = sorted(idx)
 
     @lru_cache
-    def get_patch_names(self):
+    def get_patch_sample_names(self):
         return self.PATCH_NAMES[self.samples_idx]
 
     @lru_cache
@@ -45,8 +54,19 @@ class ResultLoader:
         return self.CENTROIDS_EMBEDDINGS[self.samples_idx]
 
     @lru_cache
-    def get_segmentation_maps(self):
+    def get_segmentation_maps_samples(self):
         return np.argmax(self.PREDICTIONS[self.samples_idx], axis=3)
+
+    @lru_cache
+    def get_segmentation_maps(self):
+        return np.argmax(self.PREDICTIONS, axis=3)
+
+    @lru_cache
+    def get_rgb_segmentation_maps_sample(self, cmap=plt.cm.tab10.colors):
+        return seglabel2colourmap(self.get_segmentation_maps_samples(), cmap_lut=cmap)
+
+    def get_rgb_segmentation_maps(self, cmap=plt.cm.tab10.colors):
+        return seglabel2colourmap(self.get_segmentation_maps(), cmap_lut=cmap)
 
     @lru_cache
     def get_true_positives_preds(self):
@@ -54,6 +74,14 @@ class ResultLoader:
 
     def get_centroid_embeddings(self):
         return self.CENTROIDS_EMBEDDINGS
+
+    @lru_cache
+    def get_centroid_truth_sample(self):
+        return self.CENTROIDS_TRUTH[self.samples_idx]
+
+    @staticmethod
+    def set_random_seed(random_seed=None):
+        np.random.seed(seed=random_seed)
 
     def set_predefind_samples(self, samples_idx):
         self.samples_idx = samples_idx

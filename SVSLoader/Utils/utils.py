@@ -3,7 +3,9 @@ import os
 import re
 import numpy as np
 import pandas as pd
+from functools import lru_cache
 from matplotlib import pyplot as plt
+from skimage.color import label2rgb
 
 
 def open_dir_listings(directory_listings=None):
@@ -149,6 +151,7 @@ def arrays_equal(a, b):
     return True
 
 
+@lru_cache
 def create_circular_mask(h, w, center=None, radius=None):
     if center is None:  # use the middle of the image
         center = (int(w / 2), int(h / 2))
@@ -160,13 +163,8 @@ def create_circular_mask(h, w, center=None, radius=None):
     return mask
 
 
-def seglabel2colourmap(seg_labels=None, cmap=plt.cm.tab10.colors):
-    h, w = seg_labels.shape
-    img_rgb = np.zeros((h, w, 3))
-    lut = {label: list(rgb_colour) for label, rgb_colour in enumerate(cmap)}
-    for label, rgb_colour in lut.items():
-        img_rgb[seg_labels == label] = rgb_colour
-    return img_rgb
+def seglabel2colourmap(seg_labels=None, cmap_lut=plt.cm.tab10.colors):
+    return label2rgb(label=seg_labels, colors=list(cmap_lut), bg_label=-1)
 
 
 def split_segmentation_classes(seg_maps=None, y_targets=None):
