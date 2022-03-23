@@ -2,21 +2,23 @@ import os
 import re
 from SVSLoader.Config import load_config
 
-# TODO this needs tidying. Will find required dlls and add them to the project.
+# TODO Migrate to Tiffslide.
 try:
-    os.add_dll_directory('C:\\Program Files\\Openslide\\bin') # Fix for Openslide bin not being found on path
+    os.add_dll_directory('C:\\Program Files\\Openslide\\bin')  # Fix for Openslide bin not being found on path
     from openslide import OpenSlide
 except AttributeError:
-    print('Warning: Openslide DDL fix did not complete.')
+    print('Warning: Openslide DLL fix did not complete.')
 
 
 class SVSLoader:
-    def __init__(self, config_file='config\\default_configuration.yaml'):
-        self.CONFIG = load_config(file=config_file)
+    def __init__(self, config=None):
+        if type(config) == str:
+            self.CONFIG = load_config(config)
+        elif type(config) == dict:
+            self.CONFIG = config
         self.DATA_DIR = self.CONFIG['DATA_DIR']
         self.svs_files = []
         self.directory_listing = []
-        self.associated_files = []
         self.loaded_svs = None
         self.loaded_associated_file = None
         self.svs_id = ''
@@ -39,35 +41,23 @@ class SVSLoader:
         if self.loaded_svs is None:
             raise FileNotFoundError
         self.svs_id = svs_id
-        self.set_svs_institute()
+        self.extract_institute_id()
         self._loader_message()
 
     def load_associated_file(self, pattern=None):
         if not pattern:
             pattern = self.CONFIG['ASSOCIATED_FILE_PATTERN']
         for file_path in self.search_directory_listing(pattern=pattern):
-            # If the svs id matches the id pattern in
             if re.search(self.svs_id[:-4], os.path.split(file_path)[-1].lower()):
                 self.loaded_associated_file = open(file=file_path)
                 print('\tUsing Loaded {}\n'.format(self.loaded_associated_file.name))
                 break
 
-    def find_svs_path_by_id(self, pattern):
-        return [path for path in self.directory_listing if re.search(pattern, path) and path.endswith('.svs')][0]
-
-    def _loader_message(self):
-        pass
-
-    def set_svs_institute(self):
-        pass
-
     def close_svs(self):
         self.loaded_svs.close()
 
-    def get_associated_files(self, pattern=None):
-        files = [path for path in self.directory_listing if
-                 re.search(pattern.lower(), path.lower()) and not path.endswith('.svs')]
-        return files
+    def find_svs_path_by_id(self, pattern):
+        return [path for path in self.directory_listing if re.search(pattern, path) and path.endswith('.svs')][0]
 
     def search_directory_listing(self, pattern=None):
         compiled = re.compile(pattern=pattern)
@@ -76,3 +66,28 @@ class SVSLoader:
             if compiled.search(os.path.split(file_path)[-1].lower()):
                 found_files.append(self.directory_listing[i])
         return found_files
+
+    def build_patch_filenames(self):
+        raise NotImplementedError
+
+    def parse_annotation(self):
+        raise NotImplementedError
+
+    def read_patch_region(self):
+        raise NotImplementedError
+
+    def build_mask(self):
+        raise NotImplementedError
+
+    def extract_patch(self):
+        raise NotImplementedError
+
+    def save_patch(self):
+        raise NotImplementedError
+
+    def _loader_message(self):
+        raise NotImplementedError
+
+    def extract_institute_id(self):
+        raise NotImplementedError
+
