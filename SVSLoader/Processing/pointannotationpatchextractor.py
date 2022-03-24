@@ -12,10 +12,10 @@ class PointAnnotationPatchExtractor(SVSLoader):
         super().__init__(config=config)
         self.SCALING_FACTOR = self.CONFIG['EXPAND_OUT_FACTOR']
         self.patches_dir_ = self.CONFIG['PATCHES_DIR']
-        self.patch_h_w = (self.CONFIG['PATCH_SIZE']['WIDTH'],
+        self.patch_w_h = (self.CONFIG['PATCH_SIZE']['WIDTH'],
                           self.CONFIG['PATCH_SIZE']['HEIGHT'])
-        self.patch_size = (self.CONFIG['PATCH_SIZE']['WIDTH'] * self.SCALING_FACTOR,
-                           self.CONFIG['PATCH_SIZE']['HEIGHT'] * self.SCALING_FACTOR)
+        self.patch_w_h_scaled = (self.CONFIG['PATCH_SIZE']['WIDTH'] * self.SCALING_FACTOR,
+                                 self.CONFIG['PATCH_SIZE']['HEIGHT'] * self.SCALING_FACTOR)
         self.patch = None
         self.point_index = None
         self.points_coordinates = []
@@ -38,12 +38,12 @@ class PointAnnotationPatchExtractor(SVSLoader):
         self.point_index = loc_idx
         self.loaded_rgb_patch_img = self.loaded_svs.read_region(location=self.patch_coordinates[self.point_index],
                                                                 level=level,
-                                                                size=self.patch_size)
+                                                                size=self.patch_w_h_scaled)
         self.loaded_rgb_patch_img = np.array(self.loaded_rgb_patch_img.convert("RGB"))
-        self.loaded_rgb_patch_img = cv.resize(src=self.loaded_rgb_patch_img, dsize=self.patch_h_w)
+        self.loaded_rgb_patch_img = cv.resize(src=self.loaded_rgb_patch_img, dsize=self.patch_w_h)
         self.selected_patch_class = self.patch_classes[self.point_index]
 
-    def extract_patch(self):
+    def build_patch(self):
         self.patch = cv.hconcat([self.loaded_rgb_patch_img, self.ground_truth_mask])
 
     def parse_annotation(self):
@@ -57,8 +57,8 @@ class PointAnnotationPatchExtractor(SVSLoader):
                                 round(float(point.find('vertices').contents[0]['y']))))
         self.points_coordinates = points_coor
         self.patch_classes = patch_classes
-        self.patch_coordinates = [(int(coor[0] - (self.patch_size[0] / 2)),
-                                   int(coor[1] - (self.patch_size[1] / 2))) for coor in self.points_coordinates]
+        self.patch_coordinates = [(int(coor[0] - (self.patch_w_h_scaled[0] / 2)),
+                                   int(coor[1] - (self.patch_w_h_scaled[1] / 2))) for coor in self.points_coordinates]
 
     def build_patch_filenames(self):
         _filenames = []
@@ -70,7 +70,7 @@ class PointAnnotationPatchExtractor(SVSLoader):
             _filenames.append(_patch_filename)
             self.patch_filenames = _filenames
 
-    def build_mask(self, truth=0):
+    def build_ground_truth_mask(self, truth=0):
         # IMPORTANT NOTE: Open CV compatibility requires to be inverted dimensions, coors and parameters.
         circle_center_coor = (int(round(self.CONFIG['PATCH_SIZE']['WIDTH'] / 2)),
                               int(round(self.CONFIG['PATCH_SIZE']['HEIGHT'] / 2)))
@@ -82,7 +82,7 @@ class PointAnnotationPatchExtractor(SVSLoader):
                                            thickness=-1)
 
     def get_patch_center(self):
-        patch_center_x, patch_center_y = self.patch_size
+        patch_center_x, patch_center_y = self.patch_w_h_scaled
         return int(round(patch_center_x / 2)), int(round(patch_center_y / 2))
 
     def save_patch(self):

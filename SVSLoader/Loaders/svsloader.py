@@ -76,10 +76,10 @@ class SVSLoader:
     def read_patch_region(self):
         raise NotImplementedError
 
-    def build_mask(self):
+    def build_ground_truth_mask(self):
         raise NotImplementedError
 
-    def extract_patch(self):
+    def build_patch(self):
         raise NotImplementedError
 
     def save_patch(self):

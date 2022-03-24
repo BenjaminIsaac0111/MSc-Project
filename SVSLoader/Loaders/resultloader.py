@@ -2,7 +2,6 @@ import h5py
 from functools import lru_cache
 import numpy as np
 from matplotlib import pyplot as plt
-
 from SVSLoader.Config import load_config
 from SVSLoader.Utils.utils import seglabel2colourmap
 
@@ -18,7 +17,7 @@ class ResultLoader:
         self.CLASSES = self.CONFIG['CLASS_COMPONENTS']
         self.N_CLASSES = len(self.CLASSES)
         self.RESULTS_SET = self.H5_OUTDIR + list(self.f[self.H5_OUTDIR].keys())[self.CONFIG['RESULT_SET_IDX']] + '/'
-        self.PATCH_NAMES = self.f[self.RESULTS_SET + 'Patch_Names']
+        self.PATCH_NAMES = np.array(self.f[self.RESULTS_SET + 'Patch_Names'])
         self.EMBEDDINGS = self.f[self.RESULTS_SET + 'Embeddings']
         self.PREDICTIONS = self.f[self.RESULTS_SET + 'Predictions']
         self.CENTROIDS_PREDS = np.squeeze(self.PREDICTIONS[self.PREDICTIONS.attrs['Centroids']])
@@ -41,6 +40,9 @@ class ResultLoader:
     def get_patch_sample_names(self):
         return self.PATCH_NAMES[self.samples_idx]
 
+    def get_patch_names(self):
+        return self.PATCH_NAMES
+
     @lru_cache
     def get_embedding_samples(self):
         return self.EMBEDDINGS[self.samples_idx]
@@ -48,6 +50,9 @@ class ResultLoader:
     @lru_cache
     def get_prediction_samples(self):
         return self.PREDICTIONS[self.samples_idx]
+
+    def get_prediction_by_patch_name(self, patch_name=None):
+        return np.squeeze(self.PREDICTIONS[np.where(self.PATCH_NAMES == patch_name)])
 
     @lru_cache
     def get_centroid_embeddings_samples(self):
@@ -78,6 +83,9 @@ class ResultLoader:
     @lru_cache
     def get_centroid_truth_sample(self):
         return self.CENTROIDS_TRUTH[self.samples_idx]
+
+    def get_centroid_truth_by_patch_name(self, patch_name=None):
+        return np.squeeze(self.CENTROIDS_TRUTH[np.where(self.PATCH_NAMES == patch_name)])
 
     @staticmethod
     def set_random_seed(random_seed=None):
