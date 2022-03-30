@@ -1,6 +1,6 @@
 import pytest
 from SVSLoader.Processing.pointannotationpatchextractor import PointAnnotationPatchExtractor
-from SVSLoader.Processing.dcrfmaskextractor import DenseCRFMaskExtractor
+from SVSLoader.Processing.densecrfmaskextractor import DenseCRFMaskExtractor
 
 
 @pytest.fixture
@@ -43,4 +43,6 @@ def test_2_dcrf_extraction(configuration):
                 dcrf_extractor.ground_truth_mask = dcrf_extractor.ground_truth_mask * 127
                 dcrf_extractor.build_patch()
                 dcrf_extractor.save_patch()
+                if j > 10:
+                    break
         dcrf_extractor.close_svs()

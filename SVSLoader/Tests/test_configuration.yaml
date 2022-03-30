@@ -1,32 +1,31 @@
-# Format with backslash in paths.
-DATA_DIR: 'tests\testdata\'
+# -- System Configuration -- #
+RANDOM_SEED: 7
+
+# -- Whole Slide Image loader configuration -- #
+WSL_DATA_DIR: 'tests\testdata\'
 TRAINING_DATA: 'models\TrainingData.txt'
 TEST_DATA: 'models\TestData.txt'
-PATCHES_DIR: 'tests\data\'
-
-# Patch extraction configuration.
 ASSOCIATED_FILE_PATTERN: 'w.*scores.xml'
-DOWNSAMPLE_FACTOR: 2
+
+# -- Patch Extraction Configuration -- #
+EXTRACTION_MODULE: 'DenseCRFMaskExtractor'
+PATCHES_DIR: 'tests\data\'
 PATCH_SIZE:
   WIDTH: 512
   HEIGHT: 1024
 MASK:
   RADIUS: 64
-EXPAND_OUT_FACTOR: 2
-
+SCALING_FACTOR: 2
 USE_CIRCULAR_MASK: True
-CRF_CONTEXT_MASK_RADIUS: 64
+CONTEXT_MASK_RADIUS: 64
 BATCH_SIZE: 4
-RANDOM_SEED: 7
-PATCH_LISTING: 'working_data/TrainingData.txt'
-MODEL_DIR: 'working_data/'
 MODEL_NAME: 'J_MODEL_8px.output.h5'
-RESULTS_DATABASE: 'C:\Users\benja\OneDrive - University of Leeds\PhD Projects\working_data\test_embedding_results.hdf5'
+RESULTS_DATABASE: 'Tests\testdata\test_embedding_results.hdf5'
 
 # H5 paths have forward slashes.
 RESULTS_H5_DIR: 'outputs/'
 RESULT_SET_IDX: -1 # -1 for latest results set.
-CLASS_WEIGHTS: [1.3139, 0.4371, 0.2406, 1.7502, 5 .1133, 10, 1.9652, 5.6271, 3.0248]
+CLASS_WEIGHTS: [1.3139, 0.4371, 0.2406, 1.7502, 5.1133, 10, 1.9652, 5.6271, 3.0248]
 CLASS_COMPONENTS: {0: 'Non-Informative',
                     1: 'Tumour',
                     2: 'Stroma',

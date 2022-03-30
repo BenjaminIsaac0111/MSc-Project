@@ -10,12 +10,12 @@ from SVSLoader.Loaders.svsloader import SVSLoader
 class PointAnnotationPatchExtractor(SVSLoader):
     def __init__(self, config='config\\default_configuration.yaml'):
         super().__init__(config=config)
-        self.SCALING_FACTOR = self.CONFIG['EXPAND_OUT_FACTOR']
+        self._SCALING_FACTOR = self.CONFIG['SCALING_FACTOR']  # TODO compute using function based on mag input?
         self.patches_dir_ = self.CONFIG['PATCHES_DIR']
         self.patch_w_h = (self.CONFIG['PATCH_SIZE']['WIDTH'],
                           self.CONFIG['PATCH_SIZE']['HEIGHT'])
-        self.patch_w_h_scaled = (self.CONFIG['PATCH_SIZE']['WIDTH'] * self.SCALING_FACTOR,
-                                 self.CONFIG['PATCH_SIZE']['HEIGHT'] * self.SCALING_FACTOR)
+        self.patch_w_h_scaled = (self.CONFIG['PATCH_SIZE']['WIDTH'] * self._SCALING_FACTOR,
+                                 self.CONFIG['PATCH_SIZE']['HEIGHT'] * self._SCALING_FACTOR)
         self.patch = None
         self.point_index = None
         self.points_coordinates = []
@@ -26,10 +26,6 @@ class PointAnnotationPatchExtractor(SVSLoader):
         self.loaded_rgb_patch_img = None
         self.ground_truth_mask = None
         self.patch_center = self.get_patch_center()
-
-    def _loader_message(self):
-        message = f'--- Loaded {self.svs_id} on PID {os.getpid()} ---'
-        print(message)
 
     def extract_institute_id(self):
         self.institute_id = Path(self.find_svs_path_by_id(pattern=self.svs_id)).parts[-2]
@@ -42,6 +38,10 @@ class PointAnnotationPatchExtractor(SVSLoader):
         self.loaded_rgb_patch_img = np.array(self.loaded_rgb_patch_img.convert("RGB"))
         self.loaded_rgb_patch_img = cv.resize(src=self.loaded_rgb_patch_img, dsize=self.patch_w_h)
         self.selected_patch_class = self.patch_classes[self.point_index]
+
+    def get_patch_center(self):
+        patch_center_x, patch_center_y = self.patch_w_h_scaled
+        return int(round(patch_center_x / 2)), int(round(patch_center_y / 2))
 
     def build_patch(self):
         self.patch = cv.hconcat([self.loaded_rgb_patch_img, self.ground_truth_mask])
@@ -61,6 +61,7 @@ class PointAnnotationPatchExtractor(SVSLoader):
                                    int(coor[1] - (self.patch_w_h_scaled[1] / 2))) for coor in self.points_coordinates]
 
     def build_patch_filenames(self):
+        self.patch_filenames = []
         _filenames = []
         for i, loc in enumerate(self.patch_coordinates):
             _patch_filename = ''
@@ -78,12 +79,45 @@ class PointAnnotationPatchExtractor(SVSLoader):
         self.ground_truth_mask = cv.circle(img=mask,
                                            center=circle_center_coor,
                                            radius=self.CONFIG['MASK']['RADIUS'],
-                                           color=(0, 0, int(self.patch_classes[self.point_index]) + 1),  # HGDL Blue channel used for ground truth. 0 = not of intrest.
+                                           color=(0, 0, int(self.patch_classes[self.point_index]) + 1),
                                            thickness=-1)
-
-    def get_patch_center(self):
-        patch_center_x, patch_center_y = self.patch_w_h_scaled
-        return int(round(patch_center_x / 2)), int(round(patch_center_y / 2))
 
     def save_patch(self):
         Image.fromarray(self.patch).save(fp=self.patches_dir_ + self.patch_filenames[self.point_index])
+
+    def run_patch_extraction(self):
+        self.loader_message = ''
+        if not os.path.exists(f'{self.CONFIG["PATCHES_DIR"]}'):
+            os.mkdir(f'{self.CONFIG["PATCHES_DIR"]}\\')
+        existing_patches = os.listdir(path=self.CONFIG['PATCHES_DIR'])
+        for i, file in enumerate(self.svs_files):
+            self.load_svs_by_id(file)
+            self.load_associated_file()
+
+            try:
+                self.parse_annotation()
+            except AttributeError as e:
+                m = f'\tNo associated file found for {file} using RegEx: {self.CONFIG["ASSOCIATED_FILE_PATTERN"]}.\n'
+                self.loader_message += m
+                self.print_loader_message()
+                continue
+
+            self.build_patch_filenames()
+
+            for j, filename in enumerate(self.patch_filenames):
+                if filename in existing_patches:
+                    m = f'\tPatch {j, filename} exists, skipped.\n'
+                    self.loader_message += m
+                    continue
+                try:
+                    self.read_patch_region(loc_idx=j)
+                except ValueError as e:
+                    m = f'\tPatch {filename} extends beyond image, skipped.\n'
+                    self.loader_message += m
+                    continue
+
+                self.build_ground_truth_mask()
+                self.build_patch()
+                self.save_patch()
+                self.print_loader_message()
+

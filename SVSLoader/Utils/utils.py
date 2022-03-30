@@ -30,16 +30,6 @@ def write_list(list_to_write=None, file_to_write=None):
     dir_listing_file.close()
 
 
-def list_to_blocks(lst=None, n_blocks=1):
-    """
-    Pure python function to split a list into blocks. Can be useful for pooling data for tasks.
-    :param lst: the list split into blocks.
-    :param n_blocks: number of blocks to split into.
-    :return: the list of built blocks.
-    """
-    return [lst[i:i + n_blocks] for i in range(0, len(lst), n_blocks)]
-
-
 def str2bool(v):
     """
     A str to bool utility. Useful for parsing cli arguments.

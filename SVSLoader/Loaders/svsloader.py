@@ -1,22 +1,19 @@
 import os
 import re
 from SVSLoader.Config import load_config
-
-# TODO Migrate to Tiffslide.
-try:
-    os.add_dll_directory('C:\\Program Files\\Openslide\\bin')  # Fix for Openslide bin not being found on path
-    from openslide import OpenSlide
-except AttributeError:
-    print('Warning: Openslide DLL fix did not complete.')
+from tiffslide import TiffSlide
+import pathlib
 
 
 class SVSLoader:
     def __init__(self, config=None):
-        if type(config) == str:
+        if issubclass(type(config), pathlib.PurePath):
+            self.CONFIG = load_config(config)
+        elif type(config) == str:
             self.CONFIG = load_config(config)
         elif type(config) == dict:
             self.CONFIG = config
-        self.DATA_DIR = self.CONFIG['DATA_DIR']
+        self.DATA_DIR = self.CONFIG['WSL_DATA_DIR']
         self.svs_files = []
         self.directory_listing = []
         self.loaded_svs = None
@@ -26,6 +23,7 @@ class SVSLoader:
         self.construct_dir_listing()
         self.construct_svs_files_list()
         self.no_assoc_files_counted = 0
+        self.loader_message = f''
 
     def construct_dir_listing(self):
         for root, dirs, files in os.walk(self.DATA_DIR):
@@ -37,20 +35,21 @@ class SVSLoader:
 
     def load_svs_by_id(self, svs_id=None):
         svs_path = self.find_svs_path_by_id(pattern=svs_id)
-        self.loaded_svs = OpenSlide(filename=svs_path)
+        self.loaded_svs = TiffSlide(filename=svs_path)
         if self.loaded_svs is None:
             raise FileNotFoundError
         self.svs_id = svs_id
         self.extract_institute_id()
-        self._loader_message()
+        self.loader_message += f'--- Loaded {self.svs_id} on PID {os.getpid()} ---\n'
 
     def load_associated_file(self, pattern=None):
+        self.loaded_associated_file = None
         if not pattern:
             pattern = self.CONFIG['ASSOCIATED_FILE_PATTERN']
         for file_path in self.search_directory_listing(pattern=pattern):
             if re.search(self.svs_id[:-4], os.path.split(file_path)[-1].lower()):
                 self.loaded_associated_file = open(file=file_path)
-                print('\tUsing Loaded {}\n'.format(self.loaded_associated_file.name))
+                self.loader_message += f'\tUsing Loaded {self.loaded_associated_file.name}\n'
                 break
 
     def close_svs(self):
@@ -66,6 +65,9 @@ class SVSLoader:
             if compiled.search(os.path.split(file_path)[-1].lower()):
                 found_files.append(self.directory_listing[i])
         return found_files
+
+    def print_loader_message(self):
+        print(self.loader_message)
 
     def build_patch_filenames(self):
         raise NotImplementedError
@@ -85,9 +87,8 @@ class SVSLoader:
     def save_patch(self):
         raise NotImplementedError
 
-    def _loader_message(self):
-        raise NotImplementedError
-
     def extract_institute_id(self):
         raise NotImplementedError
 
+    def run_patch_extraction(self):
+        raise NotImplementedError

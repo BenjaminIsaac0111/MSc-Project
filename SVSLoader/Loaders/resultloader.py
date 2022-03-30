@@ -17,12 +17,13 @@ class ResultLoader:
         self.CLASSES = self.CONFIG['CLASS_COMPONENTS']
         self.N_CLASSES = len(self.CLASSES)
         self.RESULTS_SET = self.H5_OUTDIR + list(self.f[self.H5_OUTDIR].keys())[self.CONFIG['RESULT_SET_IDX']] + '/'
-        self.PATCH_NAMES = np.array(self.f[self.RESULTS_SET + 'Patch_Names'])
+        self.PATCH_NAMES = np.array(self.f[self.RESULTS_SET + 'Patch_Names']).astype(str)
         self.EMBEDDINGS = self.f[self.RESULTS_SET + 'Embeddings']
         self.PREDICTIONS = self.f[self.RESULTS_SET + 'Predictions']
         self.CENTROIDS_PREDS = np.squeeze(self.PREDICTIONS[self.PREDICTIONS.attrs['Centroids']])
-        self.CENTROIDS_TRUTH = self.EMBEDDINGS.attrs['Centroids_True_Class']
+        self.CENTROIDS_TRUTH = self.EMBEDDINGS.attrs['Centroids_True_Class'][:]
         self.CENTROIDS_EMBEDDINGS = np.squeeze(self.EMBEDDINGS[self.EMBEDDINGS.attrs['Centroids']])
+        self.TRUE_POSITIVES = self.PATCH_NAMES[np.equal(np.argmax(self.CENTROIDS_PREDS, axis=1), self.CENTROIDS_TRUTH)]
         self.samples_idx = None
         self.random_seed = self.CONFIG['RANDOM_SEED']
         if self.random_seed:
