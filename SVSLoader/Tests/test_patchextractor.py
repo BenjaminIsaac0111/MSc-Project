@@ -1,6 +1,7 @@
 import pytest
 from SVSLoader.Processing.pointannotationpatchextractor import PointAnnotationPatchExtractor
 from SVSLoader.Processing.densecrfmaskextractor import DenseCRFMaskExtractor
+from SVSLoader.Processing.tileextractor import TileExtractor
 
 
 @pytest.fixture
@@ -9,7 +10,7 @@ def configuration():
     return configuration
 
 
-def test_1_patch_extraction(configuration):
+def test_1_point_extraction(configuration):
     patch_extractor = PointAnnotationPatchExtractor(config=configuration)
     for i, file in enumerate(patch_extractor.svs_files):
         patch_extractor.load_svs_by_id(file)
@@ -36,7 +37,7 @@ def test_2_dcrf_extraction(configuration):
         dcrf_extractor.parse_annotation()
         dcrf_extractor.build_patch_filenames()
         for j, filename in enumerate(dcrf_extractor.patch_filenames):
-            if filename in dcrf_extractor.result_patch_filenames:  # Use only patches that are in the results set.
+            if filename in dcrf_extractor.tp_result_patch_filenames:  # Use only patches that are in the results set.
                 dcrf_extractor.read_patch_region(loc_idx=j)
                 dcrf_extractor.build_ground_truth_mask()
                 # To check the context is correct in the patch rgb output.
@@ -46,3 +47,18 @@ def test_2_dcrf_extraction(configuration):
                 if j > 10:
                     break
         dcrf_extractor.close_svs()
+
+
+def testing_3_tile_extraction(configuration):
+    tile_extractor = TileExtractor(configuration)
+    tile_extractor.patch_w_h = (512 * 2, 512 * 2)
+    tile_extractor.patch_res = (512, 512)  # Used for final resolution. CV Resize.
+    for i, file in enumerate(tile_extractor.svs_files):
+        tile_extractor.load_svs_by_id(file)
+        tile_extractor.build_meshgrid_coordinates()
+        tile_extractor.build_patch_filenames()
+        for j, filename in enumerate(tile_extractor.patch_filenames):
+            print(filename)
+            tile_extractor.read_patch_region(patch_idx=j)
+            tile_extractor.save_patch()
+    tile_extractor.close_svs()

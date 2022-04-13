@@ -26,7 +26,7 @@ def main(specified_svs_files=None, args=None):
 
     if specified_svs_files:
         extractor.svs_files = specified_svs_files
-    extractor.run_patch_extraction()
+    extractor.run_extraction()
 
     print(f'--- Process ID: {os.getpid()} --- Complete!')
 

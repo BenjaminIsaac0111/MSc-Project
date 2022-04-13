@@ -32,11 +32,18 @@ class PointAnnotationPatchExtractor(SVSLoader):
 
     def read_patch_region(self, level=0, loc_idx=None):
         self.point_index = loc_idx
-        self.loaded_rgb_patch_img = self.loaded_svs.read_region(location=self.patch_coordinates[self.point_index],
-                                                                level=level,
-                                                                size=self.patch_w_h_scaled)
+        self.loaded_rgb_patch_img = self.loaded_svs.read_region(
+            location=self.patch_coordinates[self.point_index],
+            level=level,
+            size=self.patch_w_h_scaled,
+            padding=True
+        )
+
         self.loaded_rgb_patch_img = np.array(self.loaded_rgb_patch_img.convert("RGB"))
-        self.loaded_rgb_patch_img = cv.resize(src=self.loaded_rgb_patch_img, dsize=self.patch_w_h)
+        self.loaded_rgb_patch_img = cv.resize(
+            src=self.loaded_rgb_patch_img,
+            dsize=self.patch_w_h
+        )
         self.selected_patch_class = self.patch_classes[self.point_index]
 
     def get_patch_center(self):
@@ -72,9 +79,10 @@ class PointAnnotationPatchExtractor(SVSLoader):
             self.patch_filenames = _filenames
 
     def build_ground_truth_mask(self, truth=0):
-        # IMPORTANT NOTE: Open CV compatibility requires to be inverted dimensions, coors and parameters.
-        circle_center_coor = (int(round(self.CONFIG['PATCH_SIZE']['WIDTH'] / 2)),
-                              int(round(self.CONFIG['PATCH_SIZE']['HEIGHT'] / 2)))
+        circle_center_coor = (
+            int(round(self.CONFIG['PATCH_SIZE']['WIDTH'] / 2)),
+            int(round(self.CONFIG['PATCH_SIZE']['HEIGHT'] / 2))
+        )
         mask = np.zeros(self.loaded_rgb_patch_img.shape, dtype=np.uint8)
         self.ground_truth_mask = cv.circle(img=mask,
                                            center=circle_center_coor,
@@ -85,39 +93,5 @@ class PointAnnotationPatchExtractor(SVSLoader):
     def save_patch(self):
         Image.fromarray(self.patch).save(fp=self.patches_dir_ + self.patch_filenames[self.point_index])
 
-    def run_patch_extraction(self):
-        self.loader_message = ''
-        if not os.path.exists(f'{self.CONFIG["PATCHES_DIR"]}'):
-            os.mkdir(f'{self.CONFIG["PATCHES_DIR"]}\\')
-        existing_patches = os.listdir(path=self.CONFIG['PATCHES_DIR'])
-        for i, file in enumerate(self.svs_files):
-            self.load_svs_by_id(file)
-            self.load_associated_file()
-
-            try:
-                self.parse_annotation()
-            except AttributeError as e:
-                m = f'\tNo associated file found for {file} using RegEx: {self.CONFIG["ASSOCIATED_FILE_PATTERN"]}.\n'
-                self.loader_message += m
-                self.print_loader_message()
-                continue
-
-            self.build_patch_filenames()
-
-            for j, filename in enumerate(self.patch_filenames):
-                if filename in existing_patches:
-                    m = f'\tPatch {j, filename} exists, skipped.\n'
-                    self.loader_message += m
-                    continue
-                try:
-                    self.read_patch_region(loc_idx=j)
-                except ValueError as e:
-                    m = f'\tPatch {filename} extends beyond image, skipped.\n'
-                    self.loader_message += m
-                    continue
-
-                self.build_ground_truth_mask()
-                self.build_patch()
-                self.save_patch()
-                self.print_loader_message()
-
+    def run_extraction(self):
+        NotImplementedError

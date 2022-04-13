@@ -86,8 +86,7 @@ def merge_classes(classes=None, data=None, target=None):
 # TODO Could move into a processing/triallister.py at some point.
 def find_listings_from_trial(trial_file=None, directory_listing=None):
     """
-    This function will look for all the listed data that correspond with a trail excel file. A bit of a domain specific
-    function.
+    This function will look for all the listed data that correspond with a trial excel file.
     :param trial_file: The trial file used to build the list of svs files for the trial.
     :param directory_listing: a directory listing where the svs files are.
     :return: the found svs ids and unresolved missing ids.

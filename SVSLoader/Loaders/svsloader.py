@@ -1,12 +1,13 @@
 import os
 import re
+import numpy as np
 from SVSLoader.Config import load_config
 from tiffslide import TiffSlide
 import pathlib
 
 
 class SVSLoader:
-    def __init__(self, config=None):
+    def __init__(self, config=None, data_dir=None):
         if issubclass(type(config), pathlib.PurePath):
             self.CONFIG = load_config(config)
         elif type(config) == str:
@@ -14,6 +15,9 @@ class SVSLoader:
         elif type(config) == dict:
             self.CONFIG = config
         self.DATA_DIR = self.CONFIG['WSL_DATA_DIR']
+        if data_dir:
+            self.DATA_DIR = data_dir
+
         self.svs_files = []
         self.directory_listing = []
         self.loaded_svs = None
@@ -52,6 +56,11 @@ class SVSLoader:
                 self.loader_message += f'\tUsing Loaded {self.loaded_associated_file.name}\n'
                 break
 
+    def get_wsi_res(self, as_np_array=False):
+        if not as_np_array:
+            return self.loaded_svs.dimensions
+        return np.array(self.loaded_svs.dimensions)
+
     def close_svs(self):
         self.loaded_svs.close()
 
@@ -72,16 +81,7 @@ class SVSLoader:
     def build_patch_filenames(self):
         raise NotImplementedError
 
-    def parse_annotation(self):
-        raise NotImplementedError
-
     def read_patch_region(self):
-        raise NotImplementedError
-
-    def build_ground_truth_mask(self):
-        raise NotImplementedError
-
-    def build_patch(self):
         raise NotImplementedError
 
     def save_patch(self):
@@ -90,5 +90,5 @@ class SVSLoader:
     def extract_institute_id(self):
         raise NotImplementedError
 
-    def run_patch_extraction(self):
+    def run_extraction(self):
         raise NotImplementedError
