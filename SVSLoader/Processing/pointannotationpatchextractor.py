@@ -86,12 +86,35 @@ class PointAnnotationPatchExtractor(SVSLoader):
         mask = np.zeros(self.loaded_rgb_patch_img.shape, dtype=np.uint8)
         self.ground_truth_mask = cv.circle(img=mask,
                                            center=circle_center_coor,
-                                           radius=self.CONFIG['MASK']['RADIUS'],
+                                           radius=self.CONFIG['CONTEXT_MASK_RADIUS'],
                                            color=(0, 0, int(self.patch_classes[self.point_index]) + 1),
                                            thickness=-1)
 
     def save_patch(self):
         Image.fromarray(self.patch).save(fp=self.patches_dir_ + self.patch_filenames[self.point_index])
+        patch_filepath = f'{self.CONFIG["PATCHES_DIR"]}\\{self.patch_filenames[self.point_index]}'
+        Image.fromarray(self.patch).save(fp=patch_filepath)
 
     def run_extraction(self):
-        NotImplementedError
+        if not os.path.exists(f'{self.CONFIG["PATCHES_DIR"]}'):
+            os.mkdir(f'{self.CONFIG["PATCHES_DIR"]}\\')
+        for i, file in enumerate(self.svs_files):
+            self.load_svs_by_id(file)
+            self.load_associated_file()
+
+            try:
+                self.parse_annotation()
+            except AttributeError as e:
+                m = f'\tNo associated file found for {file} using RegEx: {self.CONFIG["ASSOCIATED_FILE_PATTERN"]}.\n'
+                self.loader_message += m
+                self.print_loader_message()
+                continue
+
+            self.build_patch_filenames()
+
+            for j, filename in enumerate(self.patch_filenames):
+                self.read_patch_region(loc_idx=j)
+                self.build_ground_truth_mask()
+                self.build_patch()
+                self.save_patch()
+                self.print_loader_message()
