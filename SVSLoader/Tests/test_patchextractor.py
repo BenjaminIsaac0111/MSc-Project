@@ -24,7 +24,7 @@ def test_1_point_extraction(configuration):
             patch_extractor.ground_truth_mask = patch_extractor.ground_truth_mask * 127
             patch_extractor.build_patch()
             patch_extractor.save_patch()
-            if j > 10:
+            if j > 100:
                 break
         patch_extractor.close_svs()
 
@@ -44,7 +44,7 @@ def test_2_dcrf_extraction(configuration):
                 dcrf_extractor.ground_truth_mask = dcrf_extractor.ground_truth_mask * 127
                 dcrf_extractor.build_patch()
                 dcrf_extractor.save_patch()
-                if j > 10:
+                if j > 40:
                     break
         dcrf_extractor.close_svs()
 
