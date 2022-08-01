@@ -6,8 +6,8 @@ except AttributeError as e:
     AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 
-def process_path_value_per_class(file_path, no_channels):
-    xLeft, xRight = load_patch(file_path)
+def process_path_value_per_class(file_path=None, no_channels=None, input_size=None):
+    xLeft, xRight = load_patch(file_path, input_size)
     c = 1
     output_list = []
     while c <= no_channels:
@@ -19,14 +19,14 @@ def process_path_value_per_class(file_path, no_channels):
     return xLeft, channels
 
 
-def load_patch(file_path):
+def load_patch(file_path=None, input_size=None):
     img = tf.io.read_file(file_path)
-    # NOTE: TF 2.3 docs say is loaded as unit8 - TF 2.2 seem to load a s afloat (check this if upgrading!)
+    # NOTE: TF 2.3 docs say is loaded as unit8 - TF 2.2 seem to load as a float (check this if upgrading!)
     x = decode_img(img)
-    xLeft = tf.slice(x, [0, 0, 0], [1024, 512, 3])
+    xLeft = tf.slice(x, [0, 0, 0], [input_size[0], input_size[1], 3])
     # xLeft=x
     # Data loaded as float [0,1] range - convert to int [0,255]
-    xRight = tf.cast(tf.slice(x, [0, 512, 0], [1024, 512, 3]) * 255, tf.int32)
+    xRight = tf.cast(tf.slice(x, [0, input_size[1], 0], [input_size[0], input_size[1], 3]) * 255, tf.int32)
     return xLeft, xRight
 
 
@@ -36,10 +36,10 @@ def decode_img(img):
     # Use `convert_image_dtype` to convert to floats in the [0,1] range.
     img = tf.image.convert_image_dtype(img, tf.float32)
     # resize the image to the desired size.
-    return tf.image.resize(img, [1024, 1024])
+    return img
 
 
-def prepare_dataset(ds, batch_size=16, cache=True, shuffle=False, shuffle_buffer_size=1000,
+def prepare_dataset(ds, batch_size=16, cache=True, shuffle=False, shuffle_buffer_size=128,
                     prefetch_buffer_size=AUTOTUNE, repeat=None):
     # If this is a small dataset, only load it once, and keep it in memory.
     # use `.cache(filename)` to cache preprocessing work for datasets that don't
@@ -55,7 +55,7 @@ def prepare_dataset(ds, batch_size=16, cache=True, shuffle=False, shuffle_buffer
     # Repeat forever
     ds = ds.repeat(repeat)
     ds = ds.batch(batch_size)
-    # `prefetch` lets the dataset fetch batches in the background while the model
+    # `prefetch` lets the dataset fetch batches in the background while the ssl_model
     # is training.
     ds = ds.prefetch(buffer_size=prefetch_buffer_size)
 
