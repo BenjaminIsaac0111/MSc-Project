@@ -22,7 +22,6 @@ class TileExtractor(SVSLoader):
         )
 
         self.patch_idx = None
-        self.patch = None
         self.patch_coordinates = []
         self.patch_filenames = []
         self.loaded_rgb_patch_img = None
@@ -74,10 +73,6 @@ class TileExtractor(SVSLoader):
                     self.read_patch_region(patch_idx=j)
                     self.save_patch()
                     continue
-
-    def get_patch_center(self):
-        patch_center_x, patch_center_y = self.patch_w_h
-        return int(round(patch_center_x / 2)), int(round(patch_center_y / 2))
 
     def build_meshgrid_coordinates(self):
         x_n_y_n_tiles = np.floor(self.get_wsi_res() / np.array(self.patch_w_h)).astype('uint8')
