@@ -1,191 +1,254 @@
-import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
 
-def encoder_mini_block(inputs, n_filters=32, dropout_prob=0.3, max_pooling=True):
-    """
-    This block uses multiple convolution layers, max pool, relu activation to create an architecture for learning.
-    Dropout can be added for regularization to prevent overfitting.
-    The block returns the activation values for next layer along with a skip connection which will be used in the
-    decoder
-    """
-    # Add 2 Conv Layers with relu activation and HeNormal initialization using TensorFlow
-    # Proper initialization prevents from the problem of exploding and vanishing gradients
-    # 'Same' padding will pad the input to conv layer such that the output has the same height and projector_width (hence,
-    # is not reduced in size)
-    conv = layers.Conv2D(n_filters,
-                         3,  # Kernel size
-                         activation='relu',
-                         padding='same',
-                         kernel_initializer='HeNormal')(inputs)
-    conv = layers.Conv2D(n_filters,
-                         3,  # Kernel size
-                         activation='relu',
-                         padding='same',
-                         kernel_initializer='HeNormal')(conv)
-
-    # Batch Normalization will normalize the output of the last layer based on the batch's mean and standard deviation
-    conv = layers.BatchNormalization()(conv, training=False)
-
-    # In case of overfitting, dropout will regularize the loss and gradient computation to shrink the influence of
-    # weights on output
-    if dropout_prob > 0:
-        conv = tf.keras.layers.Dropout(dropout_prob)(conv)
-
-    # Pooling reduces the size of the image while keeping the number of channels same
-    # Pooling has been kept as optional as the last encoder layer does not use pooling (hence, makes the encoder
-    # block flexible to use)
-    # Below, Max pooling considers the maximum of the input slice for output computation and uses stride of 2 to
-    # traverse across input image
-    if max_pooling:
-        next_layer = tf.keras.layers.MaxPooling2D(pool_size=(2, 2))(conv)
-    else:
-        next_layer = conv
-
-    # skip connection (without max pooling) will be input to the decoder layer to prevent information loss during
-    # transpose convolutions
-    skip_connection = conv
-
-    return next_layer, skip_connection
-
-
-def decoder_mini_block(prev_layer_input, skip_layer_input, n_filters=32):
-    """
-    Decoder Block first uses transpose convolution to upscale the image to a bigger size and then,
-    merges the result with skip layer results from encoder block
-    Adding 2 convolutions with 'same' padding helps further increase the depth of the network for better predictions
-    The function returns the decoded layer output
-    """
-    # Start with a transpose convolution layer to first increase the size of the image
-    up = layers.Conv2DTranspose(
-        n_filters,
-        (3, 3),  # Kernel size
-        strides=(2, 2),
-        padding='same')(prev_layer_input)
-
-    # Merge the skip connection from previous block to prevent information loss
-    merge = layers.concatenate([up, skip_layer_input], axis=3)
-
-    # Add 2 Conv Layers with relu activation and HeNormal initialization for further processing
-    # The parameters for the function are similar to encoder
-    conv = layers.Conv2D(n_filters,
-                         3,  # Kernel size
-                         activation='relu',
-                         padding='same',
-                         kernel_initializer='HeNormal')(merge)
-    conv = layers.Conv2D(n_filters,
-                         3,  # Kernel size
-                         activation='relu',
-                         padding='same',
-                         kernel_initializer='HeNormal')(conv)
-    return conv
-
-
-def u_net_compiled(input_size=(512, 512, 3), n_filters=32, n_classes=3):
-    """
-    Combine both encoder and decoder blocks according to the U-Net research paper
-    Return the ssl_model as output
-    """
-    # Input size represent the size of 1 image (the size used for pre-processing)
-    inputs = layers.Input(input_size)
-
-    # Encoder includes multiple convolutional mini blocks with different maxpooling, dropout and filter parameters
-    # Observe that the filter are increasing as we go deeper into the network which will increasse the # channels of
-    # the image
-    cblock1 = encoder_mini_block(inputs, n_filters, dropout_prob=0, max_pooling=True)
-    cblock2 = encoder_mini_block(cblock1[0], n_filters * 2, dropout_prob=0, max_pooling=True)
-    cblock3 = encoder_mini_block(cblock2[0], n_filters * 4, dropout_prob=0, max_pooling=True)
-    cblock4 = encoder_mini_block(cblock3[0], n_filters * 8, dropout_prob=0.3, max_pooling=True)
-    cblock5 = encoder_mini_block(cblock4[0], n_filters * 16, dropout_prob=0.3, max_pooling=False)
-
-    # Decoder includes multiple mini blocks with decreasing number of filter
-    # Observe the skip connections from the encoder are given as input to the decoder
-    # Recall the 2nd output of encoder block was skip connection, hence cblockn[1] is used
-    ublock6 = decoder_mini_block(cblock5[0], cblock4[1], n_filters * 8)
-    ublock7 = decoder_mini_block(ublock6, cblock3[1], n_filters * 4)
-    ublock8 = decoder_mini_block(ublock7, cblock2[1], n_filters * 2)
-    ublock9 = decoder_mini_block(ublock8, cblock1[1], n_filters)
-
-    # Complete the ssl_model with 1 3x3 convolution layer (Same as the prev Conv Layers)
-    # Followed by a 1x1 Conv layer to get the image to the desired size.
-    # Observe the number of channels will be equal to number of output classes
-    conv9 = layers.Conv2D(n_filters,
-                          3,
-                          activation='relu',
-                          padding='same',
-                          kernel_initializer='he_normal')(ublock9)
-
-    conv10 = layers.Conv2D(n_classes, 1, padding='same')(conv9)
-
-    # Define the ssl_model
-    model = tf.keras.Model(inputs=inputs, outputs=conv10)
-
-    return model
-
-
-def xception_unet(img_size=(512, 512), num_classes=9, filters=None, n_conv_layers=2):
+def xception_unet(input_size=(256, 256), num_classes=9, filters=None, n_conv_layers=2):
     if filters is None:
         filters = [64, 128, 256]
+    skip_connections = []
 
-    inputs = keras.Input(shape=img_size + (3,))
+    inputs = keras.Input(shape=input_size + (3,))
     s = layers.experimental.preprocessing.Rescaling(1.0 / 255)(inputs)
 
     # Entry block
-    x = layers.Conv2D(64, 3, strides=1, padding="same", activation='relu', kernel_initializer='HeNormal')(s)
+    x = layers.SeparableConv2D(64, 2, strides=1, padding="same", activation='leaky_relu',
+                               kernel_initializer='HeNormal')(s)
     x = layers.BatchNormalization()(x)
-    previous_block_activation = x  # Set aside residual
-    # TODO make n Convs variable.
+    residual_skip_connection = x
     # Blocks 1, 2, 3 are identical apart from the feature depth.
     for f in filters:
-        x = layers.SeparableConv2D(f, 3, padding="same", activation='relu', kernel_initializer='HeNormal')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.SeparableConv2D(f, 3, padding="same", activation='relu', kernel_initializer='HeNormal')(x)
-        x = layers.BatchNormalization()(x)
+        for _ in range(n_conv_layers):
+            x = layers.SeparableConv2D(f, 2, padding="same", activation='leaky_relu', kernel_initializer='HeNormal')(x)
+            x = layers.BatchNormalization()(x)
+        skip_connections.append(x)  # store for context skips.
         x = layers.MaxPooling2D(3, strides=2, padding="same")(x)
-        # Project residual
-        residual = layers.Conv2D(f, 1, strides=2, padding="same")(previous_block_activation)
+        residual = layers.Conv2D(f, 1, strides=2, activation='leaky_relu', padding="same")(residual_skip_connection)
         x = layers.add([x, residual])  # Add back residual
-        previous_block_activation = x  # Set aside next residual
-    enc = x
+        residual_skip_connection = x
+
+    x = layers.Conv2D(f * 2, 2, padding="same", activation='leaky_relu', kernel_initializer='HeNormal')(x)
 
     filters.reverse()
+
     for f in filters:
-        x = layers.Conv2DTranspose(f, 3, padding="same", activation='relu', kernel_initializer='HeNormal')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.Conv2DTranspose(f, 3, padding="same", activation='relu', kernel_initializer='HeNormal')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.UpSampling2D(2)(x)
-        # Project residual
-        residual = layers.UpSampling2D(2)(previous_block_activation)
-        residual = layers.Conv2D(f, 1, padding="same", kernel_initializer='HeNormal')(residual)
+        for _ in range(n_conv_layers):
+            x = layers.Conv2D(f, 2, padding="same", activation='leaky_relu', kernel_initializer='HeNormal')(x)
+            x = layers.BatchNormalization()(x)
+        x = layers.Conv2DTranspose(f, 2, strides=2, padding="same", activation='leaky_relu',
+                                   kernel_initializer='HeNormal')(x)
+        residual = layers.Conv2DTranspose(f, 2, strides=2, padding="same", activation='leaky_relu',
+                                          kernel_initializer='HeNormal')(residual_skip_connection)
         x = layers.add([x, residual])  # Add back residual
-        previous_block_activation = x  # Set aside next residual
+        if len(skip_connections) > 0:
+            x = layers.concatenate([x, skip_connections.pop()])
+        residual_skip_connection = x
     # Add a per-pixel classification layer
-    dec = layers.Conv2D(num_classes, 3, activation="softmax", padding="same", kernel_initializer='HeNormal')(x)
-    # Define the ssl_model
-    return inputs, enc, dec
+    fully_connected_network = layers.Conv2D(num_classes, 2, activation="softmax", padding="same",
+                                            kernel_initializer='HeNormal')(x)
+    return inputs, fully_connected_network
+
+
+def res_unet(filter_root=64, depth=4, n_class=9, input_size=(256, 256, 3), activation='leaky_relu', batch_norm=True,
+             final_activation='softmax'):
+    inputs = layers.Input(input_size)
+    x = inputs
+    # Dictionary for long connections
+    long_connection_store = {}
+
+    # Down sampling
+    for i in range(depth):
+        out_channel = 2 ** i * filter_root
+
+        # Residual/Skip connection
+        res = layers.Conv2D(out_channel, kernel_size=1, padding='same', use_bias=False)(x)
+
+        # First Conv Block with Conv, BN and activation
+        conv1 = layers.Conv2D(out_channel, kernel_size=3, padding='same')(x)
+        if batch_norm:
+            conv1 = layers.BatchNormalization()(conv1)
+        act1 = layers.Activation(activation)(conv1)
+
+        # Second Conv block with Conv and BN only
+        conv2 = layers.Conv2D(out_channel, kernel_size=3, padding='same')(act1)
+        if batch_norm:
+            conv2 = layers.BatchNormalization()(conv2)
+
+        resconnection = layers.Add()([res, conv2])
+
+        act2 = layers.Activation(activation)(resconnection)
+
+        # Max pooling
+        if i < depth - 1:
+            long_connection_store[str(i)] = act2
+            x = layers.MaxPooling2D(padding='same')(act2)
+        else:
+            x = act2
+
+    # Upsampling
+    for i in range(depth - 2, -1, -1):
+        out_channel = 2 ** i * filter_root
+
+        # long connection from down sampling path.
+        long_connection = long_connection_store[str(i)]
+
+        up_conv1 = layers.Conv2DTranspose(out_channel, 2, activation=activation, padding='same')(x)
+
+        #  Concatenate.
+        up_conc = layers.Concatenate(axis=-1)([up_conv1, long_connection])
+
+        #  Convolutions
+        up_conv2 = layers.Conv2D(out_channel, 3, padding='same')(up_conc)
+        if batch_norm:
+            up_conv2 = layers.BatchNormalization()(up_conv2)
+        up_act1 = layers.Activation(activation)(up_conv2)
+
+        up_conv2 = layers.Conv2D(out_channel, 3, padding='same')(up_act1)
+        if batch_norm:
+            up_conv2 = layers.BatchNormalization()(up_conv2)
+
+        # Residual/Skip connection
+        res = layers.Conv2D(out_channel, kernel_size=1, padding='same', use_bias=False)(up_conc)
+
+        resconnection = layers.Add()([res, up_conv2])
+
+        x = layers.Activation(activation)(resconnection)
+
+    # Final convolution
+    output = layers.Conv2D(n_class, 1, padding='same', activation=final_activation, name='output')(x)
+
+    return inputs, output
+
+
+def unet(input_shape=(128, 128, 3), n_labels=9, n_filters=32, output_mode="softmax"):
+    inputs = layers.Input(input_shape)
+
+    conv1 = layers.Convolution2D(n_filters, (3, 3), padding='same', kernel_initializer='he_normal')(inputs)
+    conv1 = layers.BatchNormalization()(conv1)
+    conv1 = layers.Activation("leaky_relu")(conv1)
+    pool1 = layers.MaxPooling2D(pool_size=(2, 2))(conv1)
+
+    conv2 = layers.Convolution2D(2 * n_filters, (3, 3), padding='same', kernel_initializer='he_normal')(pool1)
+    conv2 = layers.BatchNormalization()(conv2)
+    conv2 = layers.Activation("leaky_relu")(conv2)
+    pool2 = layers.MaxPooling2D(pool_size=(2, 2))(conv2)
+
+    conv3 = layers.Convolution2D(4 * n_filters, (3, 3), padding='same', kernel_initializer='he_normal')(pool2)
+    conv3 = layers.BatchNormalization()(conv3)
+    conv3 = layers.Activation("leaky_relu")(conv3)
+    pool3 = layers.MaxPooling2D(pool_size=(2, 2))(conv3)
+
+    conv4 = layers.Convolution2D(8 * n_filters, (3, 3), padding='same', kernel_initializer='he_normal')(pool3)
+    conv4 = layers.BatchNormalization()(conv4)
+    conv4 = layers.Activation("leaky_relu")(conv4)
+    pool4 = layers.MaxPooling2D(pool_size=(2, 2))(conv4)
+
+    conv5 = layers.Convolution2D(16 * n_filters, (3, 3), padding='same', kernel_initializer='he_normal')(pool4)
+    conv5 = layers.BatchNormalization()(conv5)
+    conv5 = layers.Activation("leaky_relu")(conv5)
+
+    up6 = layers.UpSampling2D(size=(2, 2))(conv5)
+    conv6 = layers.Convolution2D(8 * n_filters, (3, 3), padding='same', kernel_initializer='he_normal')(up6)
+    conv6 = layers.BatchNormalization()(conv6)
+    conv6 = layers.Activation("leaky_relu")(conv6)
+    merge6 = layers.concatenate([conv4, conv6], axis=3)
+
+    up7 = layers.UpSampling2D(size=(2, 2))(merge6)
+    conv7 = layers.Convolution2D(4 * n_filters, (3, 3), padding='same', kernel_initializer='he_normal')(up7)
+    conv7 = layers.BatchNormalization()(conv7)
+    conv7 = layers.Activation("leaky_relu")(conv7)
+    merge7 = layers.concatenate([conv3, conv7], axis=3)
+
+    up8 = layers.UpSampling2D(size=(2, 2))(merge7)
+    conv8 = layers.Convolution2D(2 * n_filters, (3, 3), padding='same', kernel_initializer='he_normal')(up8)
+    conv8 = layers.BatchNormalization()(conv8)
+    conv8 = layers.Activation("leaky_relu")(conv8)
+    merge8 = layers.concatenate([conv2, conv8], axis=3)
+
+    up9 = layers.UpSampling2D(size=(2, 2))(merge8)
+    conv9 = layers.Convolution2D(n_filters, (3, 3), padding='same', kernel_initializer='he_normal')(up9)
+    conv9 = layers.BatchNormalization()(conv9)
+    conv9 = layers.Activation("leaky_relu")(conv9)
+    merge9 = layers.concatenate([conv1, conv9], axis=3)
+
+    conv10 = layers.Convolution2D(n_labels, (1, 1), padding='same', kernel_initializer='he_normal')(merge9)
+    conv10 = layers.BatchNormalization()(conv10)
+    outputs = layers.Activation(output_mode)(conv10)
+
+    return inputs, outputs
+
+
+def inception_module(inputs, numFilters=32):
+    tower_0 = layers.Conv2D(numFilters, (1, 1), padding='same', kernel_initializer='he_normal')(inputs)
+    tower_0 = layers.BatchNormalization()(tower_0)
+    tower_0 = layers.Activation("leaky_relu")(tower_0)
+
+    tower_1 = layers.Conv2D(numFilters, (1, 1), padding='same', kernel_initializer='he_normal')(inputs)
+    tower_1 = layers.BatchNormalization()(tower_1)
+    tower_1 = layers.Activation("leaky_relu")(tower_1)
+    tower_1 = layers.Conv2D(numFilters, (3, 3), padding='same', kernel_initializer='he_normal')(tower_1)
+    tower_1 = layers.BatchNormalization()(tower_1)
+    tower_1 = layers.Activation("leaky_relu")(tower_1)
+
+    tower_2 = layers.Conv2D(numFilters, (1, 1), padding='same', kernel_initializer='he_normal')(inputs)
+    tower_2 = layers.BatchNormalization()(tower_2)
+    tower_2 = layers.Activation("leaky_relu")(tower_2)
+    tower_2 = layers.Conv2D(numFilters, (3, 3), padding='same', kernel_initializer='he_normal')(tower_2)
+    tower_2 = layers.Conv2D(numFilters, (3, 3), padding='same', kernel_initializer='he_normal')(tower_2)
+    tower_2 = layers.BatchNormalization()(tower_2)
+    tower_2 = layers.Activation("leaky_relu")(tower_2)
+
+    tower_3 = layers.MaxPooling2D((3, 3), strides=(1, 1), padding='same')(inputs)
+    tower_3 = layers.Conv2D(numFilters, (1, 1), padding='same', kernel_initializer='he_normal')(tower_3)
+    tower_3 = layers.BatchNormalization()(tower_3)
+    tower_3 = layers.Activation("leaky_relu")(tower_3)
+
+    inception_module = layers.concatenate([tower_0, tower_1, tower_2, tower_3], axis=3)
+    return inception_module
+
+
+def inception_unet(input_shape=(128, 128, 3), n_labels=9, n_filters=32, output_mode="softmax"):
+    inputs = layers.Input(input_shape)
+
+    conv1 = inception_module(inputs, n_filters)
+    pool1 = layers.MaxPooling2D(pool_size=(2, 2))(conv1)
+
+    conv2 = inception_module(pool1, 2 * n_filters)
+    pool2 = layers.MaxPooling2D(pool_size=(2, 2))(conv2)
+
+    conv3 = inception_module(pool2, 4 * n_filters)
+    pool3 = layers.MaxPooling2D(pool_size=(2, 2))(conv3)
+
+    conv4 = inception_module(pool3, 8 * n_filters)
+    pool4 = layers.MaxPooling2D(pool_size=(2, 2))(conv4)
+
+    conv5 = inception_module(pool4, 16 * n_filters)
+
+    up6 = layers.UpSampling2D(size=(2, 2))(conv5)
+    up6 = inception_module(up6, 8 * n_filters)
+    merge6 = layers.concatenate([conv4, up6], axis=3)
+
+    up7 = layers.UpSampling2D(size=(2, 2))(merge6)
+    up7 = inception_module(up7, 4 * n_filters)
+    merge7 = layers.concatenate([conv3, up7], axis=3)
+
+    up8 = layers.UpSampling2D(size=(2, 2))(merge7)
+    up8 = inception_module(up8, 2 * n_filters)
+    merge8 = layers.concatenate([conv2, up8], axis=3)
+
+    up9 = layers.UpSampling2D(size=(2, 2))(merge8)
+    up9 = inception_module(up9, n_filters)
+    merge9 = layers.concatenate([conv1, up9], axis=3)
+
+    conv10 = layers.Convolution2D(n_labels, (1, 1), padding='same', kernel_initializer='he_normal')(merge9)
+    conv10 = layers.BatchNormalization()(conv10)
+    outputs = layers.Activation(output_mode)(conv10)
+
+    return inputs, outputs
 
 
 if __name__ == '__main__':
     # Free up RAM in case the ssl_model definition cells were run multiple times
     keras.backend.clear_session()
-    # Build ssl_model
-    inputs, encoder, decoder = xception_unet(filters=[64, 128, 256, 512])
-    encoder = keras.Model(inputs, encoder)
-
-    decoder = keras.Model(inputs, decoder)
-    # Transfer Weights from encoder
-    for i, layer in enumerate(encoder.layers):
-        print(layer)
-        decoder.layers[i].set_weights(layer.get_weights())
-        print(i)
-
-    # skips_idx = [(i, ssl_model.get_layer(layer.name))
-    #              for i, layer in enumerate(ssl_model.layers)
-    #              if 'add' in layer.name][:-1]
-    # ssl_model.summary()
-    # encoder = keras.Model(ssl_model.layers[:30], ssl_model.layers[:30].output)
-    # keras.utils.plot_model(ssl_model, to_file='ssl_model.png', show_layer_activations=True, show_shapes=True, rankdir='LR')
-    # keras.utils.plot_model(encoder, to_file='encoder.png', show_layer_activations=True, show_shapes=True, rankdir='LR')
-    # keras.utils.plot_model(ssl_model, to_file='decoder.png', show_layer_activations=True, show_shapes=True, rankdir='LR')
+    inputs, fc_output = res_unet()
+    model = keras.Model(inputs, fc_output)
+    model.summary()
