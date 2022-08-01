@@ -16,18 +16,38 @@ class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
         self.tp_result_patch_filenames = [str(name) for name in self.results_loader.TRUE_POSITIVES]
         self.N_CLASSES = self.results_loader.N_CLASSES
         self.feature_embedding_resolution = self.results_loader.EMBEDDINGS.shape[1:]
+        self.center = None
+        self.enforce_gt_cir_mask = create_circular_mask(
+            h=self.loaded_rgb_patch_img.shape[0],
+            w=self.loaded_rgb_patch_img.shape[1],
+            radius=gt_assertion_mask_radius
+        )
 
-    def build_ground_truth_mask(self, gaussian_sxy=5, bilateral_sxy=50, crf_n_iter=5):
+    def build_ground_truth_mask(self, gaussian_sxy=4, bilateral_sxy=48, crf_n_iter=4,
+                                use_cir_mask=True, gt_assertion_mask_radius=4):
+
         patch_filename = self.patch_filenames[self.point_index]
-        seg_mask = self.results_loader.get_prediction_by_patch_name(patch_filename)
+        model_softmax_output = self.results_loader.get_prediction_by_patch_name(patch_filename)
         patch_centroid_truth = self.results_loader.get_centroid_truth_by_patch_name(patch_filename)
         cir_mask = create_circular_mask(
             h=self.loaded_rgb_patch_img.shape[0],
             w=self.loaded_rgb_patch_img.shape[1],
             radius=self.CONFIG['CONTEXT_MASK_RADIUS']
         )
-        seg_mask = resize(seg_mask, dsize=self.patch_w_h)
-        im_softmax = seg_mask
+
+        if self.center is None:
+            self.center = (
+                int(self.loaded_rgb_patch_img.shape[1] / 2),
+                int(self.loaded_rgb_patch_img.shape[0] / 2)
+            )
+
+        model_softmax_output = resize(model_softmax_output, dsize=self.patch_w_h)
+        im_softmax = model_softmax_output
+        # Assert that the ground truth is preserved when applying the CRF.
+        gt_assert = np.zeros(shape=self.N_CLASSES)
+        gt_assert[patch_centroid_truth] = 254
+        im_softmax[self.enforce_gt_cir_mask] = gt_assert
+
         feat_first = im_softmax.transpose((2, 0, 1)).reshape((self.N_CLASSES, -1))
         unary = unary_from_softmax(feat_first)
         unary = np.ascontiguousarray(unary)  # As C array.
@@ -58,9 +78,11 @@ class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
              self.loaded_rgb_patch_img.shape[1])
         )
 
-        res[res != patch_centroid_truth] = 0
-        res[~cir_mask] = 0
-        res[res == patch_centroid_truth] = patch_centroid_truth + 1
+        res[res != patch_centroid_truth] = -1  # Get rid of other classes.
+        if use_cir_mask:
+            res[~cir_mask] = -1  # Set all values outside the context to be ignored by the model when training.
+        res[res == patch_centroid_truth] = patch_centroid_truth
+        res = res + 1  # Offset for compatibility with HGDL3. i.e. 0 is void, 1 is Non-Informative.
         channel = np.zeros(shape=res.shape)
 
         self.ground_truth_mask = np.dstack([channel, channel, res]).astype('uint8')
@@ -90,10 +112,8 @@ class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
             for j, filename in enumerate(self.patch_filenames):
                 if filename in existing_patches:
                     continue
-                # Use only True Positive patches that are in the results set.
-                if filename in self.tp_result_patch_filenames:
-                    self.read_patch_region(loc_idx=j)
-                    self.build_ground_truth_mask()
-                    self.build_patch()
-                    self.save_patch()
-                    self.print_loader_message()
+                self.read_patch_region(loc_idx=j)
+                self.build_ground_truth_mask()
+                self.build_patch()
+                self.save_patch()
+                self.print_loader_message()
