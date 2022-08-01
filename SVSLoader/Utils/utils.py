@@ -112,6 +112,17 @@ def find_listings_from_trial(trial_file=None, directory_listing=None):
     return found_svs_listings, unresolved
 
 
+def load_patch_metadata(directory=None):
+    patch_listing = [patch_name for patch_name in os.listdir(directory) if patch_name.endswith(".png")]
+    df = pd.DataFrame()
+    df['patch_name'] = patch_listing
+    cols = ['Institute_id', 'Patient_no', 'Image_id', 'Truth']
+    df[cols] = df['patch_name'].str.split('_', expand=True).drop(columns=[3, 4])
+    df['Patient_id'] = df['Institute_id'] + df['Patient_no']
+    df['Truth'] = df['Truth'].str[0].astype(int)
+    return df
+
+
 def get_patch_meta_data_from_dir(directory=None):
     """
     [<filename>[0], [<institute_id>[0]_<patient_id>[1]_<svs_id>[2]_<patch_no>[3]_<class>[4].png[5]]]
