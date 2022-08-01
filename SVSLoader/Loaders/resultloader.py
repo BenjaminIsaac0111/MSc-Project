@@ -41,6 +41,10 @@ class ResultLoader:
     def get_patch_sample_names(self):
         return self.PATCH_NAMES[self.samples_idx]
 
+    @lru_cache
+    def get_centroid_preds_sample(self):
+        return np.argmax(self.CENTROIDS_PREDS[self.samples_idx], axis=1)
+
     def get_patch_names(self):
         return self.PATCH_NAMES
 
