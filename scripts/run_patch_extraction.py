@@ -14,7 +14,9 @@ from importlib import import_module
 def main(specified_svs_files=None, args=None):
     config = load_config(args.config)
     if config['EXTRACTION_MODULE']:
-        print(f'{os.getpid()}: Using {config["EXTRACTION_MODULE"]} module to extract patches.')
+        print(f'{os.getpid()}: Using {config["EXTRACTION_MODULE"]} '
+              f'module to extract patches from {len(specified_svs_files)} '
+              f'.svs files.')
         module = config["EXTRACTION_MODULE"]
     else:
         module = arguments.extractor_module
