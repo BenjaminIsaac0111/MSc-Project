@@ -7,3 +7,7 @@
 /SVSLoader/Tests/data/
 /SVSLoader/Tests/testdata/
 /SVSLoader/Tests/.pytest_cache/
+/SVSLoader/SVSLoader/Loaders/__pycache__
+*.pyc
+/SVSLoader.egg-info/
+*.csv
