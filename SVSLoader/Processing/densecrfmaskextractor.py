@@ -1,5 +1,4 @@
 import os
-
 import cv2
 import numpy as np
 from PIL import Image
@@ -13,7 +12,7 @@ from SVSLoader.Utils.utils import create_circular_mask
 
 class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
     def __init__(self, config_file=None):
-        super().__init__(config=config_file)
+        super().__init__(config_file=config_file)
         self.results_loader = ResultLoader(config=self.CONFIG)
         self.tp_result_patch_filenames = [str(name) for name in self.results_loader.CORRECTNESS_MASK]
         self.N_CLASSES = self.results_loader.N_CLASSES
@@ -27,8 +26,8 @@ class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
         patch_centroid_truth = self.results_loader.get_centroid_truth_by_patch_name(patch_filename)
 
         enforce_gt_cir_mask = create_circular_mask(
-            h=self.loaded_rgb_patch_img.shape[0],
-            w=self.loaded_rgb_patch_img.shape[1],
+            h=self.loaded_wsi_region.shape[0],
+            w=self.loaded_wsi_region.shape[1],
             radius=self.CONFIG['CONTEXT_MASK_RADIUS']
         )
 
@@ -44,13 +43,13 @@ class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
         unary = np.ascontiguousarray(unary)  # As C array.
 
         d = dcrf.DenseCRF2D(
-            self.loaded_rgb_patch_img.shape[1],
-            self.loaded_rgb_patch_img.shape[0],
+            self.loaded_wsi_region.shape[1],
+            self.loaded_wsi_region.shape[0],
             self.N_CLASSES
         )
         d.setUnaryEnergy(unary)
         d.addPairwiseBilateral(
-            sxy=bilateral_sxy, srgb=13, rgbim=self.loaded_rgb_patch_img,
+            sxy=bilateral_sxy, srgb=13, rgbim=self.loaded_wsi_region,
             compat=10,
             kernel=dcrf.DIAG_KERNEL,
             normalization=dcrf.NORMALIZE_SYMMETRIC
@@ -59,8 +58,8 @@ class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
         q = d.inference(crf_n_iter)
 
         pseudo_labels = np.argmax(q, axis=0).reshape(
-            (self.loaded_rgb_patch_img.shape[0],
-             self.loaded_rgb_patch_img.shape[1])
+            (self.loaded_wsi_region.shape[0],
+             self.loaded_wsi_region.shape[1])
         )
 
         pseudo_labels[pseudo_labels != patch_centroid_truth] = -1  # Get rid of other class != centroid_truth.
@@ -68,8 +67,8 @@ class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
         # Set all values outside the context to be ignored by the model when training.
         if use_cir_mask:
             new_context_size = create_circular_mask(
-                h=self.loaded_rgb_patch_img.shape[0],
-                w=self.loaded_rgb_patch_img.shape[1],
+                h=self.loaded_wsi_region.shape[0],
+                w=self.loaded_wsi_region.shape[1],
                 radius=self.CONFIG['CONTEXT_MASK_RADIUS'] * 2
             )
             pseudo_labels[~new_context_size] = -1

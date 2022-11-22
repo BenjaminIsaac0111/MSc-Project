@@ -4,44 +4,30 @@ import cv2 as cv
 import numpy as np
 from PIL import Image
 from bs4 import BeautifulSoup as soup
-from SVSLoader.Loaders.svsloader import SVSLoader
+from SVSLoader.Processing.patchextractor import PatchExtractor
 
 
-class PointAnnotationPatchExtractor(SVSLoader):
-    def __init__(self, config='config\\default_configuration.yaml'):
-        super().__init__(config=config)
-        self._SCALING_FACTOR = self.CONFIG['SCALING_FACTOR']  # TODO compute using function based on mag input?
-        self.patches_dir_ = self.CONFIG['PATCHES_DIR']
-        self.patch_w_h = (self.CONFIG['PATCH_SIZE']['WIDTH'],
-                          self.CONFIG['PATCH_SIZE']['HEIGHT'])
-        self.patch_w_h_scaled = (self.CONFIG['PATCH_SIZE']['WIDTH'] * self._SCALING_FACTOR,
-                                 self.CONFIG['PATCH_SIZE']['HEIGHT'] * self._SCALING_FACTOR)
-        self.patch = None
-        self.point_index = None
-        self.points_coordinates = []
-        self.patch_coordinates = []
-        self.patch_classes = []
-        self.selected_patch_class = None
-        self.patch_filenames = []
-        self.loaded_rgb_patch_img = None
-        self.ground_truth_mask = None
+class PointAnnotationPatchExtractor(PatchExtractor):
+    def __init__(self, config_file=None):
+        super().__init__(config_file=config_file)
         self.patch_center = self.get_patch_center()
+        self.ground_truth_mask = None
 
     def extract_institute_id(self):
-        self.institute_id = Path(self.find_svs_path_by_id(pattern=self.svs_id)).parts[-2]
+        self.batch_id = Path(self.find_svs_path_by_id(pattern=self.svs_id)).parts[-2]
 
     def read_patch_region(self, level=0, loc_idx=None):
         self.point_index = loc_idx
-        self.loaded_rgb_patch_img = self.loaded_svs.read_region(
+        self.loaded_wsi_region = self.loaded_svs.read_region(
             location=self.patch_coordinates[self.point_index],
             level=level,
             size=self.patch_w_h_scaled,
             padding=True
         )
 
-        self.loaded_rgb_patch_img = np.array(self.loaded_rgb_patch_img.convert("RGB"))
-        self.loaded_rgb_patch_img = cv.resize(
-            src=self.loaded_rgb_patch_img,
+        self.loaded_wsi_region = np.array(self.loaded_wsi_region.convert("RGB"))
+        self.loaded_wsi_region = cv.resize(
+            src=self.loaded_wsi_region,
             dsize=self.patch_w_h
         )
         self.selected_patch_class = self.patch_classes[self.point_index]
@@ -51,7 +37,7 @@ class PointAnnotationPatchExtractor(SVSLoader):
         return int(round(patch_center_x / 2)), int(round(patch_center_y / 2))
 
     def build_patch(self):
-        self.patch = cv.hconcat([self.loaded_rgb_patch_img, self.ground_truth_mask])
+        self.patch = cv.hconcat([self.loaded_wsi_region, self.ground_truth_mask])
 
     def parse_annotation(self):
         annotation = soup(''.join(self.loaded_associated_file.readlines()), 'html.parser')
@@ -60,8 +46,8 @@ class PointAnnotationPatchExtractor(SVSLoader):
         patch_classes = []
         for i, point in enumerate(points):
             patch_classes.append(point['text'])
-            points_coor.append((round(float(point.find('vertices').contents[0]['x'])),
-                                round(float(point.find('vertices').contents[0]['y']))))
+            points_coor.append((round(float(point.find('vertices').contents[1]['x'])),
+                                round(float(point.find('vertices').contents[1]['y']))))
         self.points_coordinates = points_coor
         self.patch_classes = patch_classes
         self.patch_coordinates = [(int(coor[0] - (self.patch_w_h_scaled[0] / 2)),
@@ -72,18 +58,15 @@ class PointAnnotationPatchExtractor(SVSLoader):
         _filenames = []
         for i, loc in enumerate(self.patch_coordinates):
             _patch_filename = ''
-            if self.institute_id:
-                _patch_filename += f'{self.institute_id[:2]}_{self.institute_id[-2:]}_'
+            if self.batch_id:
+                _patch_filename += f'{self.batch_id[-2:]}_'
             _patch_filename += f'{self.svs_id[:-4]}_{str(i)}_Class_{self.patch_classes[i]}.png'
             _filenames.append(_patch_filename)
             self.patch_filenames = _filenames
 
-    def build_ground_truth_mask(self, truth=0):
-        circle_center_coor = (
-            int(round(self.CONFIG['PATCH_SIZE']['WIDTH'] / 2)),
-            int(round(self.CONFIG['PATCH_SIZE']['HEIGHT'] / 2))
-        )
-        mask = np.zeros(self.loaded_rgb_patch_img.shape, dtype=np.uint8)
+    def build_ground_truth_mask(self):
+        circle_center_coor = tuple(int(coor / 2) for coor in self.patch_w_h)
+        mask = np.zeros(self.loaded_wsi_region.shape, dtype=np.uint8)
         self.ground_truth_mask = cv.circle(img=mask,
                                            center=circle_center_coor,
                                            radius=self.CONFIG['CONTEXT_MASK_RADIUS'],
@@ -91,7 +74,6 @@ class PointAnnotationPatchExtractor(SVSLoader):
                                            thickness=-1)
 
     def save_patch(self):
-        Image.fromarray(self.patch).save(fp=self.patches_dir_ + self.patch_filenames[self.point_index])
         patch_filepath = f'{self.CONFIG["PATCHES_DIR"]}\\{self.patch_filenames[self.point_index]}'
         Image.fromarray(self.patch).save(fp=patch_filepath)
 

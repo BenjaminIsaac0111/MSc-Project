@@ -7,13 +7,13 @@ import pathlib
 
 
 class SVSLoader:
-    def __init__(self, config=None, data_dir=None):
-        if issubclass(type(config), pathlib.PurePath):
-            self.CONFIG = load_config(config)
-        elif type(config) == str:
-            self.CONFIG = load_config(config)
-        elif type(config) == dict:
-            self.CONFIG = config
+    def __init__(self, config_file=None, data_dir=None):
+        if issubclass(type(config_file), pathlib.PurePath):
+            self.CONFIG = load_config(config_file)
+        elif type(config_file) == str:
+            self.CONFIG = load_config(config_file)
+        elif type(config_file) == dict:
+            self.CONFIG = config_file
         self.DATA_DIR = self.CONFIG['WSL_DATA_DIR']
         if data_dir:
             self.DATA_DIR = data_dir
@@ -23,7 +23,7 @@ class SVSLoader:
         self.loaded_svs = None
         self.loaded_associated_file = None
         self.svs_id = ''
-        self.institute_id = None
+        self.batch_id = None
         self.construct_dir_listing()
         self.construct_svs_files_list()
         self.no_assoc_files_counted = 0
@@ -43,7 +43,6 @@ class SVSLoader:
         if self.loaded_svs is None:
             raise FileNotFoundError
         self.svs_id = svs_id
-        self.extract_institute_id()
         self.loader_message += f'--- Loaded {self.svs_id} on PID {os.getpid()} ---\n'
 
     def load_associated_file(self, pattern=None):
@@ -77,18 +76,3 @@ class SVSLoader:
 
     def print_loader_message(self):
         print(self.loader_message)
-
-    def build_patch_filenames(self):
-        raise NotImplementedError
-
-    def read_patch_region(self):
-        raise NotImplementedError
-
-    def save_patch(self):
-        raise NotImplementedError
-
-    def extract_institute_id(self):
-        raise NotImplementedError
-
-    def run_extraction(self):
-        raise NotImplementedError

@@ -1,40 +1,30 @@
 import os
+from abc import ABC
 from pathlib import Path
 import cv2 as cv
 import numpy as np
 from PIL import Image
-from SVSLoader.Loaders.svsloader import SVSLoader
+from SVSLoader.Processing.patchextractor import PatchExtractor
 
 
-class TileExtractor(SVSLoader):
-    def __init__(self, config='config\\default_configuration.yaml'):
-        super().__init__(config=config)
-        self._SCALING_FACTOR = self.CONFIG['SCALING_FACTOR']  # TODO compute using function based on mag input?
+class TileExtractor(PatchExtractor, ABC):
+    def __init__(self, config_file=None):
+        super().__init__(config_file=config_file)
+        self._SCALING_FACTOR = self.CONFIG['SCALING_FACTOR']
         self.patches_dir_ = self.CONFIG['PATCHES_DIR']
-
-        self.patch_res = (
-            self.CONFIG['PATCH_SIZE']['WIDTH'],
-            self.CONFIG['PATCH_SIZE']['HEIGHT']
-        )
-        self.patch_w_h = (
-            self.CONFIG['PATCH_SIZE']['WIDTH'] * self._SCALING_FACTOR,
-            self.CONFIG['PATCH_SIZE']['HEIGHT'] * self._SCALING_FACTOR
-        )
-
+        self.patch_w_h = self.CONFIG['PATCH_SIZE']
+        self.patch_w_h_scaled = [v * self._SCALING_FACTOR for v in self.patch_w_h]
         self.patch_idx = None
         self.patch_coordinates = []
         self.patch_filenames = []
         self.loaded_rgb_patch_img = None
 
-    def extract_institute_id(self):
-        self.institute_id = Path(self.find_svs_path_by_id(pattern=self.svs_id)).parts[-2]
-
-    def read_patch_region(self, level=0, patch_idx=None):
+    def read_patch_region(self, patch_idx=None):
         self.patch_idx = patch_idx
         x, y = self.patch_coordinates[self.patch_idx]
         self.loaded_rgb_patch_img = self.loaded_svs.read_region(
             location=(x * self.patch_w_h[0], y * self.patch_w_h[1]),
-            level=level,
+            level=0,
             size=self.patch_w_h,
             padding=False
         )
@@ -49,8 +39,8 @@ class TileExtractor(SVSLoader):
         self.patch_filenames = []
         for i, loc in enumerate(self.patch_coordinates):
             _patch_filename = ''
-            if self.institute_id:
-                _patch_filename += f'{self.institute_id[:2]}_{self.institute_id[-2:]}_'
+            if self.batch_id:
+                _patch_filename += f'{self.batch_id[:2]}_{self.batch_id[-2:]}_'
             _patch_filename += f'{self.svs_id[:-4]}_{str(i)}_'
             _patch_filename += f'{loc[0]}_{loc[1]}.png'
             self.patch_filenames.append(_patch_filename)
@@ -61,7 +51,7 @@ class TileExtractor(SVSLoader):
         )
 
     def run_extraction(self):
-        existing = [file for file in os.listdir(self.CONFIG['PATCHES_DIR']) if file.endswith('.png')]
+        _existing = [file for file in os.listdir(self.CONFIG['PATCHES_DIR']) if file.endswith('.png')]
         for i, file in enumerate(self.svs_files):
             self.load_svs_by_id(file)
             self.build_meshgrid_coordinates()
@@ -69,7 +59,7 @@ class TileExtractor(SVSLoader):
             self.loader_message += f'\tExtracting {len(self.patch_filenames)} tiles...\n'
             self.print_loader_message()
             for j, filename in enumerate(self.patch_filenames):
-                if filename not in existing:
+                if filename not in _existing:
                     self.read_patch_region(patch_idx=j)
                     self.save_patch()
                     continue
@@ -83,3 +73,6 @@ class TileExtractor(SVSLoader):
             )
         )
         self.patch_coordinates = mg.reshape(2, np.prod(x_n_y_n_tiles)).T  # ij
+
+    def extract_batch_id(self):
+        self.batch_id = Path(self.find_svs_path_by_id(pattern=self.svs_id)).parts[-2]
