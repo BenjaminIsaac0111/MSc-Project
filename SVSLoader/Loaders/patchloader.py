@@ -52,11 +52,8 @@ def prepare_dataset(ds, batch_size=16, cache=True, shuffle=False, shuffle_buffer
 
     if shuffle:
         ds = ds.shuffle(buffer_size=shuffle_buffer_size)
+    ds = ds.batch(batch_size)
+    ds = ds.prefetch(buffer_size=prefetch_buffer_size)
     # Repeat forever
     ds = ds.repeat(repeat)
-    ds = ds.batch(batch_size)
-    # `prefetch` lets the dataset fetch batches in the background while the ssl_model
-    # is training.
-    ds = ds.prefetch(buffer_size=prefetch_buffer_size)
-
     return ds
