@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 from pathlib import Path
 import cv2 as cv
 import numpy as np
@@ -10,6 +11,7 @@ from SVSLoader.Processing.patchextractor import PatchExtractor
 class PointAnnotationPatchExtractor(PatchExtractor):
     def __init__(self, config_file=None):
         super().__init__(config_file=config_file)
+        self.errors = None
         self.patch_center = self.get_patch_center()
         self.ground_truth_mask = None
 
@@ -63,40 +65,39 @@ class PointAnnotationPatchExtractor(PatchExtractor):
             _patch_filename += f'{self.svs_id[:-4]}_{str(i)}_Class_{self.patch_classes[i]}.png'
             _filenames.append(_patch_filename)
             self.patch_filenames = _filenames
+        self.loader_message += f'\tExtracted {len(self.patch_filenames)} patches.'
 
+    @lru_cache
     def build_ground_truth_mask(self):
         circle_center_coor = tuple(int(coor / 2) for coor in self.patch_w_h)
         mask = np.zeros(self.loaded_wsi_region.shape, dtype=np.uint8)
+        _patch_class = int(self.patch_classes[self.point_index]) + 1
         self.ground_truth_mask = cv.circle(img=mask,
                                            center=circle_center_coor,
                                            radius=self.CONFIG['CONTEXT_MASK_RADIUS'],
-                                           color=(0, 0, int(self.patch_classes[self.point_index]) + 1),
+                                           color=(0, 0, _patch_class),
                                            thickness=-1)
 
     def save_patch(self):
         patch_filepath = f'{self.CONFIG["PATCHES_DIR"]}\\{self.patch_filenames[self.point_index]}'
         Image.fromarray(self.patch).save(fp=patch_filepath)
 
-    def run_extraction(self):
+    def run_extraction(self, dry=False):
         if not os.path.exists(f'{self.CONFIG["PATCHES_DIR"]}'):
-            os.mkdir(f'{self.CONFIG["PATCHES_DIR"]}\\')
+            os.mkdir(f'{self.CONFIG["PATCHES_DIR"]}')
         for i, file in enumerate(self.svs_files):
             self.load_svs_by_id(file)
             self.load_associated_file()
-
-            try:
-                self.parse_annotation()
-            except AttributeError as e:
-                m = f'\tNo associated file found for {file} using RegEx: {self.CONFIG["ASSOCIATED_FILE_PATTERN"]}.\n'
-                self.loader_message += m
-                self.print_loader_message()
-                continue
-
+            self.parse_annotation()
             self.build_patch_filenames()
-
             for j, filename in enumerate(self.patch_filenames):
                 self.read_patch_region(loc_idx=j)
-                self.build_ground_truth_mask()
-                self.build_patch()
-                self.save_patch()
-                self.print_loader_message()
+                try:
+                    self.build_ground_truth_mask()
+                except ValueError:
+                    self.errors += 1
+                    self.loader_message += f'\tErrors {self.errors}\n'
+                if not dry:
+                    self.build_patch()
+                    self.save_patch()
+            self.print_loader_message()

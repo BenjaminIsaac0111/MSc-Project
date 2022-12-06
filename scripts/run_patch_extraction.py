@@ -14,9 +14,7 @@ from importlib import import_module
 def main(specified_svs_files=None, args=None):
     config = load_config(args.config)
     if config['EXTRACTION_MODULE']:
-        print(f'{os.getpid()}: Using {config["EXTRACTION_MODULE"]} '
-              f'module to extract patches from {len(specified_svs_files)} '
-              f'.svs files.')
+        print(f'{os.getpid()}: Using {config["EXTRACTION_MODULE"]}')
         module = config["EXTRACTION_MODULE"]
     else:
         module = arguments.extractor_module
@@ -34,7 +32,7 @@ def main(specified_svs_files=None, args=None):
 
 
 def main_pooled(specified_svs_files=None, args=None):
-    svs_search = SVSLoader(config=args.config)
+    svs_search = SVSLoader(config_file=args.config)
     if specified_svs_files:
         svs_search.svs_files = specified_svs_files
     svs_files = np.array_split(svs_search.svs_files, args.num_workers)

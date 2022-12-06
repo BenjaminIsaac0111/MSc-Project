@@ -1,5 +1,7 @@
 import os
 import re
+from functools import lru_cache
+
 import numpy as np
 from SVSLoader.Config import load_config
 from tiffslide import TiffSlide
@@ -53,7 +55,7 @@ class SVSLoader:
             if re.search(self.svs_id[:-4], os.path.split(file_path)[-1].lower()):
                 self.loaded_associated_file = open(file=file_path)
                 self.loader_message += f'\tUsing Loaded {self.loaded_associated_file.name}\n'
-                break
+                return
 
     def get_wsi_res(self, as_np_array=False):
         if not as_np_array:
@@ -66,6 +68,7 @@ class SVSLoader:
     def find_svs_path_by_id(self, pattern):
         return [path for path in self.directory_listing if re.search(pattern, path) and path.endswith('.svs')][0]
 
+    @lru_cache
     def search_directory_listing(self, pattern=None):
         compiled = re.compile(pattern=pattern)
         found_files = []
@@ -76,3 +79,4 @@ class SVSLoader:
 
     def print_loader_message(self):
         print(self.loader_message)
+        self.loader_message = f''
