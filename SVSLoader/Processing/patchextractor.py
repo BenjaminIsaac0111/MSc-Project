@@ -1,15 +1,16 @@
 from abc import abstractmethod
+from abc import ABCMeta
 
 from SVSLoader.Loaders.svsloader import SVSLoader
 
 
-class PatchExtractor(SVSLoader):
-    def __init__(self, config_file=None):
-        super().__init__(config_file=config_file)
-        self._SCALING_FACTOR = self.CONFIG['SCALING_FACTOR']  # TODO compute using function based on mag input?
+class PatchExtractor(SVSLoader, metaclass=ABCMeta):
+    def __init__(self, configuration=None):
+        super().__init__(configuration=configuration)
+        self.scaling_factor = self.CONFIG['SCALING_FACTOR']
         self.patches_dir_ = self.CONFIG['PATCHES_DIR']
         self.patch_w_h = self.CONFIG['PATCH_SIZE']
-        self.patch_w_h_scaled = [v * self._SCALING_FACTOR for v in self.patch_w_h]
+        self.patch_w_h_scaled = [v * self.scaling_factor for v in self.patch_w_h]
         self.patch = None
         self.point_index = None
         self.points_coordinates = []
@@ -28,7 +29,7 @@ class PatchExtractor(SVSLoader):
         raise NotImplementedError
 
     @abstractmethod
-    def read_patch_region(self, loc_idx):
+    def read_patch_region(self):
         raise NotImplementedError
 
     @abstractmethod

@@ -8,8 +8,8 @@ from SVSLoader.Processing.patchextractor import PatchExtractor
 
 
 class TileExtractor(PatchExtractor, ABC):
-    def __init__(self, config_file=None):
-        super().__init__(config_file=config_file)
+    def __init__(self, configuration=None):
+        super().__init__(configuration=configuration)
         self._SCALING_FACTOR = self.CONFIG['SCALING_FACTOR']
         self.patches_dir_ = self.CONFIG['PATCHES_DIR']
         self.patch_w_h = self.CONFIG['PATCH_SIZE']

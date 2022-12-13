@@ -14,7 +14,7 @@ def test_1_point_extraction(configuration):
     patch_extractor = PointAnnotationPatchExtractor(config=configuration)
     for i, file in enumerate(patch_extractor.svs_files):
         patch_extractor.load_svs_by_id(file)
-        patch_extractor.load_associated_file()
+        patch_extractor.load_associated_files()
         patch_extractor.parse_annotation()
         patch_extractor.build_patch_filenames()
         for j, _ in enumerate(patch_extractor.patch_filenames):
@@ -30,10 +30,10 @@ def test_1_point_extraction(configuration):
 
 
 def test_2_dcrf_extraction(configuration):
-    dcrf_extractor = DenseCRFMaskExtractor(config_file=configuration)
+    dcrf_extractor = DenseCRFMaskExtractor(configuration=configuration)
     for i, file in enumerate(dcrf_extractor.svs_files):
         dcrf_extractor.load_svs_by_id(file)
-        dcrf_extractor.load_associated_file()
+        dcrf_extractor.load_associated_files()
         dcrf_extractor.parse_annotation()
         dcrf_extractor.build_patch_filenames()
         for j, filename in enumerate(dcrf_extractor.patch_filenames):

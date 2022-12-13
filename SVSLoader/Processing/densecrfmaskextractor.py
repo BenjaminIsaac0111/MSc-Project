@@ -11,8 +11,8 @@ from SVSLoader.Utils.utils import create_circular_mask
 
 
 class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
-    def __init__(self, config_file=None):
-        super().__init__(config_file=config_file)
+    def __init__(self, configuration=None):
+        super().__init__(configuration=configuration)
         self.results_loader = ResultLoader(config=self.CONFIG)
         self.tp_result_patch_filenames = [str(name) for name in self.results_loader.CORRECTNESS_MASK]
         self.N_CLASSES = self.results_loader.N_CLASSES
@@ -90,7 +90,7 @@ class DenseCRFMaskExtractor(PointAnnotationPatchExtractor):
         for i, file in enumerate(self.svs_files):
             self.loader_message = f''
             self.load_svs_by_id(file)
-            self.load_associated_file()
+            self.load_associated_files()
 
             try:
                 self.parse_annotation()

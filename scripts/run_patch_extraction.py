@@ -32,7 +32,7 @@ def main(specified_svs_files=None, args=None):
 
 
 def main_pooled(specified_svs_files=None, args=None):
-    svs_search = SVSLoader(config_file=args.config)
+    svs_search = SVSLoader(configuration=args.config)
     if specified_svs_files:
         svs_search.svs_files = specified_svs_files
     svs_files = np.array_split(svs_search.svs_files, args.num_workers)

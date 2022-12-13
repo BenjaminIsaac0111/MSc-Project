@@ -9,13 +9,13 @@ import pathlib
 
 
 class SVSLoader:
-    def __init__(self, config_file=None, data_dir=None):
-        if issubclass(type(config_file), pathlib.PurePath):
-            self.CONFIG = load_config(config_file)
-        elif type(config_file) == str:
-            self.CONFIG = load_config(config_file)
-        elif type(config_file) == dict:
-            self.CONFIG = config_file
+    def __init__(self, configuration=None, data_dir=None):
+        if issubclass(type(configuration), pathlib.PurePath):
+            self.CONFIG = load_config(configuration)
+        elif type(configuration) == str:
+            self.CONFIG = load_config(configuration)
+        elif type(configuration) == dict:
+            self.CONFIG = configuration
         self.DATA_DIR = self.CONFIG['WSL_DATA_DIR']
         if data_dir:
             self.DATA_DIR = data_dir
@@ -23,7 +23,7 @@ class SVSLoader:
         self.svs_files = []
         self.directory_listing = []
         self.loaded_svs = None
-        self.loaded_associated_file = None
+        self.loaded_associated_files = []
         self.svs_id = ''
         self.batch_id = None
         self.construct_dir_listing()
@@ -47,15 +47,16 @@ class SVSLoader:
         self.svs_id = svs_id
         self.loader_message += f'--- Loaded {self.svs_id} on PID {os.getpid()} ---\n'
 
-    def load_associated_file(self, pattern=None):
-        self.loaded_associated_file = None
+    def load_associated_files(self, pattern=None):
+        self.loaded_associated_files = []
         if not pattern:
             pattern = self.CONFIG['ASSOCIATED_FILE_PATTERN']
         for file_path in self.search_directory_listing(pattern=pattern):
             if re.search(self.svs_id[:-4], os.path.split(file_path)[-1].lower()):
-                self.loaded_associated_file = open(file=file_path)
-                self.loader_message += f'\tUsing Loaded {self.loaded_associated_file.name}\n'
-                return
+                _loaded_file = open(file=file_path)
+                self.loaded_associated_files.append(_loaded_file)
+                self.loader_message += f'\tUsing Loaded {_loaded_file.name}\n'
+        return
 
     def get_wsi_res(self, as_np_array=False):
         if not as_np_array:

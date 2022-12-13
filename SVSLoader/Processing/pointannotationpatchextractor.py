@@ -9,11 +9,15 @@ from SVSLoader.Processing.patchextractor import PatchExtractor
 
 
 class PointAnnotationPatchExtractor(PatchExtractor):
-    def __init__(self, config_file=None):
-        super().__init__(config_file=config_file)
-        self.errors = None
+    def __init__(self, configuration=None):
+        super().__init__(configuration=configuration)
+        self.errors = 0
         self.patch_center = self.get_patch_center()
         self.ground_truth_mask = None
+
+    def get_patch_center(self):
+        patch_center_x, patch_center_y = self.patch_w_h_scaled
+        return int(round(patch_center_x / 2)), int(round(patch_center_y / 2))
 
     def extract_institute_id(self):
         self.batch_id = Path(self.find_svs_path_by_id(pattern=self.svs_id)).parts[-2]
@@ -34,26 +38,24 @@ class PointAnnotationPatchExtractor(PatchExtractor):
         )
         self.selected_patch_class = self.patch_classes[self.point_index]
 
-    def get_patch_center(self):
-        patch_center_x, patch_center_y = self.patch_w_h_scaled
-        return int(round(patch_center_x / 2)), int(round(patch_center_y / 2))
-
     def build_patch(self):
         self.patch = cv.hconcat([self.loaded_wsi_region, self.ground_truth_mask])
 
     def parse_annotation(self):
-        annotation = soup(''.join(self.loaded_associated_file.readlines()), 'html.parser')
-        points = annotation.findAll('region', {'type': '3'})
         points_coor = []
         patch_classes = []
-        for i, point in enumerate(points):
-            patch_classes.append(point['text'])
-            points_coor.append((round(float(point.find('vertices').contents[1]['x'])),
-                                round(float(point.find('vertices').contents[1]['y']))))
-        self.points_coordinates = points_coor
-        self.patch_classes = patch_classes
-        self.patch_coordinates = [(int(coor[0] - (self.patch_w_h_scaled[0] / 2)),
-                                   int(coor[1] - (self.patch_w_h_scaled[1] / 2))) for coor in self.points_coordinates]
+        for associated_file in self.loaded_associated_files:
+            annotation = soup(''.join(associated_file.readlines()), 'html.parser')
+            points = annotation.findAll('region', {'type': '3'})
+            for i, point in enumerate(points):
+                patch_classes.append(point['text'])
+                points_coor.append((round(float(point.find('vertices').contents[0]['x'])),
+                                    round(float(point.find('vertices').contents[0]['y']))))
+            self.points_coordinates = points_coor
+            self.patch_classes = patch_classes
+            self.patch_coordinates = [(int(coor[0] - (self.patch_w_h_scaled[0] / 2)),
+                                       int(coor[1] - (self.patch_w_h_scaled[1] / 2))) for coor in
+                                      self.points_coordinates]
 
     def build_patch_filenames(self):
         self.patch_filenames = []
@@ -65,9 +67,7 @@ class PointAnnotationPatchExtractor(PatchExtractor):
             _patch_filename += f'{self.svs_id[:-4]}_{str(i)}_Class_{self.patch_classes[i]}.png'
             _filenames.append(_patch_filename)
             self.patch_filenames = _filenames
-        self.loader_message += f'\tExtracted {len(self.patch_filenames)} patches.'
 
-    @lru_cache
     def build_ground_truth_mask(self):
         circle_center_coor = tuple(int(coor / 2) for coor in self.patch_w_h)
         mask = np.zeros(self.loaded_wsi_region.shape, dtype=np.uint8)
@@ -87,17 +87,19 @@ class PointAnnotationPatchExtractor(PatchExtractor):
             os.mkdir(f'{self.CONFIG["PATCHES_DIR"]}')
         for i, file in enumerate(self.svs_files):
             self.load_svs_by_id(file)
-            self.load_associated_file()
+            self.load_associated_files()
             self.parse_annotation()
             self.build_patch_filenames()
+            self.errors = 0
             for j, filename in enumerate(self.patch_filenames):
-                self.read_patch_region(loc_idx=j)
-                try:
-                    self.build_ground_truth_mask()
-                except ValueError:
-                    self.errors += 1
-                    self.loader_message += f'\tErrors {self.errors}\n'
                 if not dry:
-                    self.build_patch()
-                    self.save_patch()
+                    self.read_patch_region(loc_idx=j)
+                    try:
+                        self.build_ground_truth_mask()
+                        self.build_patch()
+                        self.save_patch()
+                    except ValueError:
+                        self.errors += 1
+            self.loader_message += f'\tExtracted {len(self.patch_filenames) - self.errors} patches.'
+            self.loader_message += f'\tErrors {self.errors}\n'
             self.print_loader_message()
