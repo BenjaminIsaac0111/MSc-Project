@@ -54,6 +54,7 @@ class SVSLoader:
         for file_path in self.search_directory_listing(pattern=pattern):
             if re.search(self.svs_id[:-4], os.path.split(file_path)[-1].lower()):
                 _loaded_file = open(file=file_path)
+                assert self.svs_id[:-4] == os.path.split(_loaded_file.name)[-1].split('_')[0]
                 self.loaded_associated_files.append(_loaded_file)
                 self.loader_message += f'\tUsing Loaded {_loaded_file.name}\n'
         return

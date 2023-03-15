@@ -1,0 +1,36 @@
+# -- System Configuration -- #
+RANDOM_SEED: 7
+# -- Whole Slide Image loader configuration -- #
+WSL_DATA_DIR: 'E:\Complete_Working_Data\CR07\Collated_Data'
+TRAINING_DATA: 'models\TrainingData.txt'
+TEST_DATA: 'models\TestData.txt'
+ASSOCIATED_FILE_PATTERN: 'w.*scores.xml'
+
+# -- Patch Extraction Configuration -- #
+EXTRACTION_MODULE: 'DenseCRFMaskExtractor'
+PATCHES_DIR: 'E:\Complete_Working_Data\CR07\HGDL_Model_Patch_Data\JNET_EXPERIMENTS\DCRF16pxCirPatches\'
+PATCH_SIZE:
+  WIDTH: 512
+  HEIGHT: 1024
+SCALING_FACTOR: 2 # Will Change to magnification factor.
+USE_CIR_MASK: True
+CONTEXT_MASK_RADIUS: 16
+
+# -- MISC -- #
+PATCH_LISTING: 'working_data\TrainingData.txt'
+MODEL_DIR: 'working_data\'
+MODEL_NAME: 'J_MODEL_16px.output.h5'
+RESULTS_DATABASE: 'E:\JNET_Results_3\results_data\Training_embedding_results_16px.hdf5'
+RESULTS_H5_DIR: 'outputs/'
+RESULT_SET_IDX: -1 # -1 for latest results set.
+CLASS_WEIGHTS: [ 1.3139, 0.4371, 0.2406, 1.7502, 5.1133, 10, 1.9652, 5.6271, 3.0248 ]
+CLASS_COMPONENTS: { 0: 'Non-Informative',
+                    1: 'Tumour',
+                    2: 'Stroma',
+                    3: 'Necrosis',
+                    4: 'Vessel',
+                    5: 'Inflammation',
+                    6: 'Tumour-Lumen',
+                    7: 'Mucin',
+                    8: 'Muscle' }
+
