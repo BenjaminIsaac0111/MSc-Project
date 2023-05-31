@@ -47,9 +47,10 @@ class PointAnnotationPatchExtractor(PatchExtractor):
             annotation = soup(''.join(associated_file.readlines()), 'html.parser')
             points = annotation.findAll('region', {'type': '3'})
             for i, point in enumerate(points):
-                patch_classes.append(point['text'])
-                points_coor.append((round(float(point.find('vertices').contents[0]['x'])),
-                                    round(float(point.find('vertices').contents[0]['y']))))
+                if point['text'].isdigit():
+                    patch_classes.append(point['text'])
+                    points_coor.append((round(float(point.find('vertices').contents[0]['x'])),
+                                        round(float(point.find('vertices').contents[0]['y']))))
         self.points_coordinates = points_coor
         self.patch_classes = patch_classes
         self.patch_coordinates = [(int(coor[0] - (self.patch_w_h_scaled[0] / 2)),
