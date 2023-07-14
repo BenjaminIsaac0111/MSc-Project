@@ -1,0 +1,36 @@
+# -- Whole Slide Image loader configuration -- #
+
+#Specifies the configuration for loading the Whole Slide Images (WSI). It includes the following settings:
+#
+#- WSL_DATA_DIR: The directory path where the WSI files are located.
+#
+#- ASSOCIATED_FILE_PATTERN: The regular expression pattern used to load the associated annotation files.
+#
+#- PATCHES_DIR: The directory path where the extracted patches will be saved.
+
+WSL_DATA_DIR: 'E:\Complete_Working_Data\CR07\Collated_Data\'
+ASSOCIATED_FILE_PATTERN: 'scores.xml'
+PATCHES_DIR: 'E:\Complete_Working_Data\CR07\Patches\8px'
+
+
+# -- Patch Extraction Configuration -- #
+# Specifies the configuration for the patch extraction process. It includes the following settings:
+#
+#- EXTRACTION_MODULE: The name of the patch extraction module to be used.
+#
+#- PATCH_SIZE: The size of the patches to be extracted, specified as [width, height].
+#
+#- SCALING_FACTOR: The scaling factor applied to the patch size for resolution.
+#
+#- USE_CIR_MASK: A boolean value indicating whether to use a circular mask for the patches.
+#
+#- CONTEXT_MASK_RADIUS: The radius of the circular mask applied to the patches.
+#
+# Note: The file paths specified in the configuration are example paths and should be adjusted to match the actual file system.
+
+EXTRACTION_MODULE: 'PointAnnotationPatchExtractor'
+PATCH_SIZE: [ 512, 1024 ]
+SCALING_FACTOR: 2
+USE_CIR_MASK: True
+CONTEXT_MASK_RADIUS: 8
+

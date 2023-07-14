@@ -5,13 +5,20 @@ from functools import partial
 from multiprocessing import Pool
 import numpy as np
 from pathlib import Path
-from SVSLoader.Loaders.svsloader import SVSLoader
+from SVSLoader.Loaders.wsiloader import WSILoader
 from SVSLoader.Utils.utils import str2bool
 from SVSLoader.Config import load_config
 from importlib import import_module
 
 
 def main(specified_svs_files=None, args=None):
+    """
+    Main function for running the patch extractor.
+
+    Args:
+        specified_svs_files (list or None): List of specified SVS files to extract patches from.
+        args (argparse.Namespace or None): Command-line arguments parsed by argparse.
+    """
     config = load_config(args.config)
     if config['EXTRACTION_MODULE']:
         print(f'{os.getpid()}: Using {config["EXTRACTION_MODULE"]}')
@@ -25,23 +32,29 @@ def main(specified_svs_files=None, args=None):
     extractor = getattr(globals()[module], member)(config)
 
     if specified_svs_files:
-        extractor.svs_files = specified_svs_files
+        extractor.whole_slide_image_filenames = specified_svs_files
     extractor.run_extraction()
 
     print(f'--- Process ID: {os.getpid()} --- Complete!')
 
 
 def main_pooled(specified_svs_files=None, args=None):
-    svs_search = SVSLoader(configuration=args.config)
+    """
+    Main function for running the patch extractor using a pool of workers.
+
+    Args:
+        specified_svs_files (list or None): List of specified SVS files to extract patches from.
+        args (argparse.Namespace or None): Command-line arguments parsed by argparse.
+    """
+    svs_search = WSILoader(configuration=args.config)
     if specified_svs_files:
-        svs_search.svs_files = specified_svs_files
-    svs_files = np.array_split(svs_search.svs_files, args.num_workers)
+        svs_search.whole_slide_image_filenames = specified_svs_files
+    svs_files = np.array_split(svs_search.whole_slide_image_filenames, args.num_workers)
     svs_files = [list(chunk) for chunk in svs_files]
-    pool = Pool(args.num_workers)
-    main_pool = partial(main, args=args)
-    pool.map_async(main_pool, list(svs_files))
-    pool.close()
-    pool.join()
+
+    with Pool(args.num_workers) as pool:
+        main_pool = partial(main, args=args)
+        pool.map(main_pool, list(svs_files))
 
 
 if __name__ == '__main__':
